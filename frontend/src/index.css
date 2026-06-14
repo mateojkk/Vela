@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #1a1a1a;
+  --color-foreground: #fbfbfb;
+  --color-card: #1f1f1f;
+  --color-card-foreground: #fbfbfb;
+  --color-popover: #1f1f1f;
+  --color-popover-foreground: #fbfbfb;
+  --color-primary: #38bdf8;
+  --color-primary-foreground: #1a1a1a;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fbfbfb;
+  --color-muted: #262626;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #2a2a2a;
+  --color-accent-foreground: #fbfbfb;
+  --color-destructive: #ef4444;
+  --color-success: #3fe77e;
+  --color-warning: #facc15;
+  --color-danger: #ff5c5c;
+  --color-border: #2e2e2e;
+  --color-input: #2e2e2e;
+  --color-ring: #525252;
+  --color-chalk-green: #b4d99a;
+  --color-chalk-yellow: #dcd49b;
+  --color-chalk-red: #d68a7e;
+  --color-chalk-gold: #e0c98c;
+  --color-chalk-blue: #a8c4d6;
+  --color-chalk-indigo: #9a9cc4;
+  --color-chalk-gray: #9a9a9a;
+  --color-chalk-purple: #a48fb4;
+  --color-chalk-orange: #e0a878;
+
+  --radius: 0.625rem;
+  --font-sans: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root {
+  color-scheme: dark;
+  --background: #1a1a1a;
+  --foreground: #fbfbfb;
+  --card: #1f1f1f;
+  --card-foreground: #fbfbfb;
+  --popover: #1f1f1f;
+  --popover-foreground: #fbfbfb;
+  --primary: #38bdf8;
+  --primary-foreground: #1a1a1a;
+  --secondary: #262626;
+  --secondary-foreground: #fbfbfb;
+  --muted: #262626;
+  --muted-foreground: #a1a1aa;
+  --accent: #2a2a2a;
+  --accent-foreground: #fbfbfb;
+  --destructive: #ef4444;
+  --success: #3fe77e;
+  --warning: #facc15;
+  --danger: #ff5c5c;
+  --border: #2e2e2e;
+  --input: #2e2e2e;
+  --ring: #525252;
+  --radius: 0.625rem;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-feature-settings: "ss01", "ss02", "cv01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border: 0 solid;
+}
+
+* {
+  border-color: var(--border);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}

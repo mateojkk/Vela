@@ -1,0 +1,4 @@
+memwal
+groq
+supabase
+requests
