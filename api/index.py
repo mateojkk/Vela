@@ -21,21 +21,21 @@ from urllib.parse import urlparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Static imports guarantee Vercel bundles every handler file into this function.
-import agent
-import brief
-import called_it
-import chat
-import fixtures
-import health
-import leaderboard
-import markets
-import memory
-import og
-import predict
-import profile
-import react
-import reset
-import resolve
+from lib.handlers import agent
+from lib.handlers import brief
+from lib.handlers import called_it
+from lib.handlers import chat
+from lib.handlers import fixtures
+from lib.handlers import health
+from lib.handlers import leaderboard
+from lib.handlers import markets
+from lib.handlers import memory
+from lib.handlers import og
+from lib.handlers import predict
+from lib.handlers import profile
+from lib.handlers import react
+from lib.handlers import reset
+from lib.handlers import resolve
 
 
 HANDLERS = {

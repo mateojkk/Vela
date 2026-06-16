@@ -139,7 +139,7 @@ const server = createServer(async (req, res) => {
   // API routes
   if (pathname.startsWith("/api/")) {
     const scriptName = pathname.slice(5).replace(/\.py$/, "").replace(/\//g, "");
-    const scriptPath = resolvePath(API_DIR, `${scriptName}.py`);
+    const scriptPath = resolvePath(API_DIR, "lib", "handlers", `${scriptName}.py`);
 
     if (!existsSync(scriptPath)) {
       res.writeHead(404, { "Content-Type": "application/json" });

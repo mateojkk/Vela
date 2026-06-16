@@ -89,7 +89,7 @@ def main():
 
     # Load the API module
     script_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), f"{script_name}.py"
+        os.path.dirname(os.path.abspath(__file__)), "lib", "handlers", f"{script_name}.py"
     )
     if not os.path.exists(script_path):
         result = {"status": 404, "headers": {"Content-Type": "application/json"}}
