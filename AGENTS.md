@@ -80,7 +80,7 @@ Frontend env vars (Vite, prefix `VITE_`):
 vercel --prod
 ```
 
-Vercel routing: `/api/(.*)` → `/api/index.py` (single function that dispatches to the handler modules), static files with extensions → `frontend/dist`, all other paths → `frontend/dist/index.html` for the React SPA. The hourly match-resolution cron hits `/api/resolve`.
+Vercel routing: `/api/(.*)` → `/api/index.py` (single function that dispatches to the handler modules), static files with extensions → served from the deployment root, all other paths → `index.html` for the React SPA. The hourly match-resolution cron hits `/api/resolve`.
 
 ## Validation
 
