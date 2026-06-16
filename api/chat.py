@@ -17,7 +17,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from common import get_supabase, send_json, read_json_body, get_auth_email, options
+from lib.common import get_supabase, send_json, read_json_body, get_auth_email, options
 
 
 def _user_id(supabase, email: str) -> str | None:

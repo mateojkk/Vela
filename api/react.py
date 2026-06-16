@@ -8,7 +8,7 @@ can show a "how did you do?" panel with Vela's commentary.
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from common import get_supabase, get_groq, send_json, require_auth_email
+from lib.common import get_supabase, get_groq, send_json, require_auth_email
 
 
 class handler(BaseHTTPRequestHandler):

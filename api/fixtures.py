@@ -6,8 +6,8 @@ Each fixture includes the sub-markets available for that match.
 
 from http.server import BaseHTTPRequestHandler
 
-from common import send_json
-from polymarket import fetch_wc_events, group_events_by_match, extract_fixtures_from_groups
+from lib.common import send_json
+from lib.polymarket import fetch_wc_events, group_events_by_match, extract_fixtures_from_groups
 
 
 class handler(BaseHTTPRequestHandler):

@@ -1,7 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 
-from common import send_json
-from polymarket import fetch_wc_events, group_events_by_match
+from lib.common import send_json
+from lib.polymarket import fetch_wc_events, group_events_by_match
 
 
 SEED_MARKETS = [

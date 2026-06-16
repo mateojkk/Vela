@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 
-from common import get_supabase, send_json
+from lib.common import get_supabase, send_json
 
 
 def _safe_select(supabase) -> list[dict]:

@@ -2,7 +2,7 @@ import asyncio
 from http.server import BaseHTTPRequestHandler
 
 from memwal import RecallParams
-from common import get_memwal, send_json
+from lib.common import get_memwal, send_json
 
 
 async def _health_check():

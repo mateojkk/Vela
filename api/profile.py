@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 from memwal import RecallParams
-from common import get_supabase, get_memwal, send_json, require_auth_email, read_json_body
+from lib.common import get_supabase, get_memwal, send_json, require_auth_email, read_json_body
 
 
 async def fetch_recent_chats(email: str) -> list[dict]:

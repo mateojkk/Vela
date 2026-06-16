@@ -12,7 +12,7 @@ import re
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from common import get_supabase, send_json
+from lib.common import get_supabase, send_json
 
 APP_NAME = "Vela"
 APP_TAGLINE = "Your AI football companion for the 2026 World Cup"

@@ -1,7 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from common import get_supabase, send_json, require_auth_email, options
+from lib.common import get_supabase, send_json, require_auth_email, options
 
 
 class handler(BaseHTTPRequestHandler):

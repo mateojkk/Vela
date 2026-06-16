@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
-from common import get_supabase, get_memwal, send_json, require_auth_email, read_json_body
+from lib.common import get_supabase, get_memwal, send_json, require_auth_email, read_json_body
 
 
 async def _persist_prediction(

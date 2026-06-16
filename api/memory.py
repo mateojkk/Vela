@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
 from memwal import RecallParams
-from common import get_memwal, send_json, require_auth_email, options
+from lib.common import get_memwal, send_json, require_auth_email, options
 
 PROBE_QUERIES = [
     "prediction match outcome correct miss",

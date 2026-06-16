@@ -11,8 +11,8 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 from memwal import RecallParams
-from common import get_supabase, get_groq, get_memwal, send_json, require_auth_email, options
-from polymarket import fetch_wc_events, group_events_by_match
+from lib.common import get_supabase, get_groq, get_memwal, send_json, require_auth_email, options
+from lib.polymarket import fetch_wc_events, group_events_by_match
 
 
 def get_todays_fixtures():

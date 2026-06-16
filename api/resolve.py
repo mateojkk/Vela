@@ -15,8 +15,8 @@ user's pick is matched to the market's outcome as follows:
 import asyncio
 from http.server import BaseHTTPRequestHandler
 
-from common import get_supabase, send_json
-from polymarket import fetch_resolved_market_outcomes
+from lib.common import get_supabase, send_json
+from lib.polymarket import fetch_resolved_market_outcomes
 
 
 def _classify_user_pick(user_pick: str, market_question: str) -> str | None:

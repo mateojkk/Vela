@@ -9,7 +9,7 @@ Returns a summary of what was deleted.
 
 from http.server import BaseHTTPRequestHandler
 
-from common import (
+from lib.common import (
     get_supabase,
     send_json,
     require_auth_email,
