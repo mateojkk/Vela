@@ -29,11 +29,12 @@ cd frontend && npm run lint
 
 - `frontend/` — React 19 + TypeScript + Tailwind CSS v4 + Vite. Routes in `src/pages/`, auth in `src/hooks/useAuth.tsx`, API client in `src/lib/api.ts`, zkLogin in `src/lib/zklogin.ts`.
 - `api/` — Python serverless handlers for Vercel. Each module must expose `class handler(BaseHTTPRequestHandler)`.
-- `api/common.py` — shared helpers for Supabase/Groq/MemWal clients, auth, CORS, and JSON responses. Handlers should use these instead of module-level client creation.
-- `api/polymarket.py` — shared Polymarket Gamma API client. `fixtures.py` and `markets.py` both depend on it. There is no football-data.org integration.
+- `api/index.py` — single Vercel Function entry point. It routes `/api/*` requests to the appropriate handler module to stay within the Hobby plan's 12-function limit.
+- `api/lib/common.py` — shared helpers for Supabase/Groq/MemWal clients, auth, CORS, and JSON responses. Handlers should use these instead of module-level client creation.
+- `api/lib/polymarket.py` — shared Polymarket Gamma API client. `fixtures.py` and `markets.py` both depend on it. There is no football-data.org integration.
 - `shared/types.ts` — shared TypeScript types.
 - `supabase/schema.sql` — database schema. Run this in the Supabase SQL Editor before using the app.
-- `dev.mjs` + `api/_dev_handler.py` — local dev harness that mimics Vercel's `/api/*.py` routing.
+- `dev.mjs` + `api/_dev_handler.py` — local dev harness that proxies `/api/*` directly to the individual handler modules.
 - `vercel.json` — Vercel routing and the hourly `/api/resolve` cron.
 
 ## Environment variables
@@ -79,7 +80,7 @@ Frontend env vars (Vite, prefix `VITE_`):
 vercel --prod
 ```
 
-Vercel routing: `/api/(.*)` → `/api/$1.py`, all other paths → `frontend/dist`. The hourly match-resolution cron hits `/api/resolve`.
+Vercel routing: `/api/(.*)` → `/api/index.py` (single function that dispatches to the handler modules), all other paths → `frontend/dist`. The hourly match-resolution cron hits `/api/resolve`.
 
 ## Validation
 
