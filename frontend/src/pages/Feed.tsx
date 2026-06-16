@@ -49,6 +49,14 @@ export default function Feed() {
   const [selectedMarket, setSelectedMarket] = useState<MarketGroup | null>(null);
   const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    const key = "vela_last_resolve";
+    const last = localStorage.getItem(key);
+    if (last && Date.now() - Number(last) < 600_000) return;
+    localStorage.setItem(key, String(Date.now()));
+    fetch("/api/resolve", { method: "POST" }).catch(() => {});
+  }, []);
+
   const { data: markets = [] } = useQuery<MarketGroup[]>({
     queryKey: ["markets"],
     queryFn: () => apiGet("/markets"),
