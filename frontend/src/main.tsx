@@ -4,6 +4,7 @@ import App from "./App";
 import "./index.css";
 import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@mysten/dapp-kit/dist/index.css";
 
 const network = (import.meta.env.VITE_SUI_NETWORK ?? "mainnet") as
@@ -17,12 +18,24 @@ const networks = {
   devnet: { url: getJsonRpcFullnodeUrl("devnet"), network: "devnet" as const },
 };
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  },
+});
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SuiClientProvider networks={networks} defaultNetwork={network}>
-      <WalletProvider autoConnect>
-        <App />
-      </WalletProvider>
-    </SuiClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <SuiClientProvider networks={networks} defaultNetwork={network}>
+        <WalletProvider autoConnect>
+          <App />
+        </WalletProvider>
+      </SuiClientProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );

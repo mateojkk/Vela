@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, AuthProvider } from "./hooks/useAuth";
 import { apiGet } from "./lib/api";
 import type { MarketGroup } from "../../shared/types";
@@ -13,16 +13,6 @@ import Leaderboard from "./pages/Leaderboard";
 import MemoryMap from "./pages/MemoryMap";
 import Predictions from "./pages/Predictions";
 import ErrorBoundary from "./components/ErrorBoundary";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 30_000,
-    },
-  },
-});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -67,11 +57,10 @@ function PrefetchData() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <BrowserRouter>
-            <PrefetchData />
-            <Routes>
+      <AuthProvider>
+        <BrowserRouter>
+          <PrefetchData />
+          <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route
@@ -98,7 +87,6 @@ export default function App() {
             </Routes>
           </BrowserRouter>
         </AuthProvider>
-      </QueryClientProvider>
     </ErrorBoundary>
   );
 }
