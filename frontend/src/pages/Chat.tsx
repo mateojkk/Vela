@@ -255,8 +255,34 @@ export default function Chat() {
     ? sessions.find((s) => s.id === activeSessionId)?.title || "Chat"
     : "New chat";
 
-  const memwalReady = !!memwal;
-  const needsAuth = memwalReady && authorized === false;
+  if (!authorized) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 font-mono">
+        <div className="w-full max-w-md rounded-md border border-border bg-card p-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl">
+            🦭
+          </div>
+          <h2 className="mb-2 text-lg font-semibold text-foreground">Authorize Walrus Memory</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Vela stores your takes, predictions, and roast material on Walrus Mainnet.
+            Authorize a one-time delegate key to start chatting. You&apos;ll pay a small gas fee.
+          </p>
+          {(memwalError) && (
+            <p className="mb-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+              {memwalError}
+            </p>
+          )}
+          <button
+            onClick={handleAuthorize}
+            disabled={authChecking || memwalLoading}
+            className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
+          >
+            {authChecking || memwalLoading ? "Authorizing…" : "Authorize & Chat"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Left slot in the top bar: sessions dropdown + current title
   const leftSlot = (
@@ -339,25 +365,6 @@ export default function Chat() {
   return (
     <Layout leftSlot={leftSlot}>
       <div className="mx-auto flex h-[calc(100dvh-7rem)] max-w-3xl flex-col">
-        {/* Authorization banner */}
-        {needsAuth && (
-          <div className="mb-3 rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-foreground">
-                Authorize Walrus Memory so Vela can remember your takes and roast your bad calls.
-              </span>
-              <button
-                onClick={handleAuthorize}
-                disabled={authChecking || memwalLoading}
-                className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                {authChecking || memwalLoading ? "Authorizing…" : "Authorize"}
-              </button>
-            </div>
-            {memwalError && <p className="mt-2 text-xs text-danger">{memwalError}</p>}
-          </div>
-        )}
-
         {/* Messages */}
         <div className="thin-scrollbar flex-1 overflow-y-auto pb-4">
           {messages.length === 0 && !showBrief && (

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useMemWal } from "../hooks/useMemWal";
 import { apiPost, ApiError } from "../lib/api";
 
 const PRESET_AVATARS = [
@@ -13,15 +14,18 @@ function pickRandom<T>(arr: T[]): T {
 }
 
 export default function Onboarding() {
+  const [step, setStep] = useState<"profile" | "auth">("profile");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [avatar, setAvatar] = useState<string>("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(false);
   const { user, refreshUser } = useAuth();
+  const { authorized, loading: memwalLoading, error: memwalError, authorize } = useMemWal();
   const navigate = useNavigate();
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (username.length < 3 || username.length > 20) {
       setError("Username must be 3-20 characters");
@@ -46,7 +50,12 @@ export default function Onboarding() {
         avatar_url: avatar || null,
       });
       await refreshUser();
-      navigate("/");
+      // If already authorized, go straight to chat.
+      if (authorized) {
+        navigate("/");
+      } else {
+        setStep("auth");
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError("That username is taken. Try another one.");
@@ -55,7 +64,21 @@ export default function Onboarding() {
       } else {
         setError("Couldn't save your profile. Try again.");
       }
+    } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAuthorize() {
+    setAuthChecking(true);
+    setError("");
+    try {
+      await authorize();
+      navigate("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Authorization failed");
+    } finally {
+      setAuthChecking(false);
     }
   }
 
@@ -75,144 +98,169 @@ export default function Onboarding() {
           />
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground">vela</h1>
           <p className="text-sm text-muted-foreground">
-            Set up your profile. Vela will remember it.
+            {step === "profile" ? "Set up your profile. Vela will remember it." : "One last step: authorize your memory."}
           </p>
         </div>
 
         <div className="rounded-md border border-border bg-card p-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Avatar picker */}
-            <div>
-              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Pick an avatar
-              </label>
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-background text-2xl">
-                  {avatar ? (
-                    avatar.startsWith("emoji:") ? (
-                      <span>{avatar.slice(6)}</span>
+          {step === "profile" ? (
+            <form onSubmit={handleProfileSubmit} className="space-y-5">
+              {/* Avatar picker */}
+              <div>
+                <label className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Pick an avatar
+                </label>
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-background text-2xl">
+                    {avatar ? (
+                      avatar.startsWith("emoji:") ? (
+                        <span>{avatar.slice(6)}</span>
+                      ) : (
+                        <img
+                          src={avatar}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      )
                     ) : (
-                      <img
-                        src={avatar}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    )
-                  ) : (
-                    <span className="text-sm font-semibold text-muted-foreground">?</span>
+                      <span className="text-sm font-semibold text-muted-foreground">?</span>
+                    )}
+                  </div>
+                  {avatar && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatar("")}
+                      className="text-xs text-muted-foreground hover:text-danger"
+                    >
+                      Clear
+                    </button>
                   )}
                 </div>
-                {avatar && (
-                  <button
-                    type="button"
-                    onClick={() => setAvatar("")}
-                    className="text-xs text-muted-foreground hover:text-danger"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-6 gap-2">
-                {PRESET_AVATARS.map((e) => (
-                  <button
-                    key={e}
-                    type="button"
-                    onClick={() => setAvatar(`emoji:${e}`)}
-                    className={`flex h-10 items-center justify-center rounded-md border text-xl transition-colors ${
-                      avatar === `emoji:${e}`
-                        ? "border-primary bg-accent"
-                        : "border-border bg-background hover:bg-accent"
-                    }`}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Username */}
-            <div>
-              <label
-                htmlFor="username"
-                className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
-              >
-                Username <span className="text-danger">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  @
-                </span>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                  placeholder="yourname"
-                  required
-                  autoFocus
-                  autoComplete="username"
-                  className="h-11 w-full rounded-md border border-border bg-background pl-8 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
-                />
-              </div>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                3-20 characters. Letters, numbers, and underscores only. Used in your profile URL.
-              </p>
-            </div>
-
-            {/* Display name */}
-            <div>
-              <label
-                htmlFor="display_name"
-                className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
-              >
-                Display name <span className="text-danger">*</span>
-              </label>
-              <input
-                id="display_name"
-                name="display_name"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Vela will call you this"
-                maxLength={40}
-                required
-                className="h-11 w-full rounded-md border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
-              />
-              {username && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {suggestedNames.map((s) => (
+                <div className="grid grid-cols-6 gap-2">
+                  {PRESET_AVATARS.map((e) => (
                     <button
-                      key={s}
+                      key={e}
                       type="button"
-                      onClick={() => setDisplayName(s)}
-                      className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[10px] text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                      onClick={() => setAvatar(`emoji:${e}`)}
+                      className={`flex h-10 items-center justify-center rounded-md border text-xl transition-colors ${
+                        avatar === `emoji:${e}`
+                          ? "border-primary bg-accent"
+                          : "border-border bg-background hover:bg-accent"
+                      }`}
                     >
-                      {s}
+                      {e}
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Username */}
+              <div>
+                <label
+                  htmlFor="username"
+                  className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+                >
+                  Username <span className="text-danger">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    @
+                  </span>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                    placeholder="yourname"
+                    required
+                    autoFocus
+                    autoComplete="username"
+                    className="h-11 w-full rounded-md border border-border bg-background pl-8 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  3-20 characters. Letters, numbers, and underscores only. Used in your profile URL.
+                </p>
+              </div>
+
+              {/* Display name */}
+              <div>
+                <label
+                  htmlFor="display_name"
+                  className="mb-2 block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+                >
+                  Display name <span className="text-danger">*</span>
+                </label>
+                <input
+                  id="display_name"
+                  name="display_name"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Vela will call you this"
+                  maxLength={40}
+                  required
+                  className="h-11 w-full rounded-md border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
+                />
+                {username && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {suggestedNames.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setDisplayName(s)}
+                        className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[10px] text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {error}
+                </p>
               )}
-            </div>
 
-            {error && (
-              <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                {error}
+              <button
+                type="submit"
+                disabled={loading || !username || !displayName.trim()}
+                className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
+              >
+                {loading ? "Setting up..." : "Continue"}
+              </button>
+            </form>
+          ) : (
+            <div className="space-y-5 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl">
+                🦭
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">
+                Authorize Walrus Memory
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Vela stores your takes, predictions, and roast material on Walrus Mainnet.
+                Authorize a one-time delegate key so I can remember you. You&apos;ll pay a small gas fee.
               </p>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading || !username || !displayName.trim()}
-              className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
-            >
-              {loading ? "Setting up..." : "Meet Vela"}
-            </button>
+              {(error || memwalError) && (
+                <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {error || memwalError}
+                </p>
+              )}
 
-            <p className="text-center text-[10px] text-muted-foreground">
-              You can change all of this later from your profile.
-            </p>
-          </form>
+              <button
+                onClick={handleAuthorize}
+                disabled={authChecking || memwalLoading}
+                className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
+              >
+                {authChecking || memwalLoading ? "Authorizing…" : "Authorize & Meet Vela"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

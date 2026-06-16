@@ -71,7 +71,7 @@ Frontend env vars (Vite, prefix `VITE_`):
 
 - Python API handlers are plain `BaseHTTPRequestHandler` classes, not Flask/FastAPI.
 - Local dev spawns a fresh Python process per request through `api/_dev_handler.py`. The handler suppresses handler stdout to prevent debug prints from corrupting the wire protocol.
-- MemWal is now owned by the frontend. `handlers/memory.py` and backend MemWal writes in `handlers/agent.py` have been removed; the frontend generates per-wallet delegate keys and reads/writes memories directly.
+- MemWal is now owned by the frontend. `handlers/memory.py` and backend MemWal writes in `handlers/agent.py` have been removed; the frontend generates per-wallet delegate keys and reads/writes memories directly. Onboarding ends with a required wallet-signed `addDelegateKey` step; Chat and Memory Map block until authorization succeeds.
 - Many handlers call `asyncio.run(...)` inside synchronous `do_POST`/`do_GET` methods.
 
 ## Deployment
