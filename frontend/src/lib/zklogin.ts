@@ -16,9 +16,9 @@ import {
   generateRandomness,
   getExtendedEphemeralPublicKey,
   jwtToAddress,
-} from "@mysten/zklogin";
+} from "@mysten/sui/zklogin";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiGrpcClient } from "@mysten/sui/grpc";
 
 // ---------------------------------------------------------------------------
 // Config — VITE_GOOGLE_CLIENT_ID and VITE_SUI_NETWORK injected at build time.
@@ -53,7 +53,16 @@ export interface ZkLoginSession {
 // Sui client (shared singleton)
 // ---------------------------------------------------------------------------
 
-export const suiClient = new SuiClient({ url: getFullnodeUrl(SUI_NETWORK) });
+const SUI_RPC_URLS = {
+  mainnet: "https://fullnode.mainnet.sui.io:443",
+  testnet: "https://fullnode.testnet.sui.io:443",
+  devnet: "https://fullnode.devnet.sui.io:443",
+} as const;
+
+export const suiClient = new SuiGrpcClient({
+  network: SUI_NETWORK,
+  baseUrl: SUI_RPC_URLS[SUI_NETWORK],
+});
 
 // ---------------------------------------------------------------------------
 // Step 1: initZkLogin
@@ -72,8 +81,8 @@ export async function initZkLogin(): Promise<string> {
   }
 
   // Current epoch — session is valid for this epoch + MAX_EPOCH_EXTENSION epochs.
-  const { epoch } = await suiClient.getLatestSuiSystemState();
-  const maxEpoch = Number(epoch) + 2; // valid for ~2 epochs (~2 days on testnet)
+  const { systemState } = await suiClient.core.getCurrentSystemState();
+  const maxEpoch = Number(systemState.epoch) + 2; // valid for ~2 epochs (~2 days on testnet)
 
   // Ephemeral keypair (lives only for this login session).
   const ephemeralKeyPair = new Ed25519Keypair();
@@ -172,8 +181,8 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginSession> {
 
   const proof = await proverRes.json();
 
-  // Derive the Sui address.
-  const address = jwtToAddress(jwt, salt);
+  // Derive the Sui address (legacyAddress=false uses the current zkLogin address derivation).
+  const address = jwtToAddress(jwt, salt, false);
 
   const session: ZkLoginSession = {
     address,

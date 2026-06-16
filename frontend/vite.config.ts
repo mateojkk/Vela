@@ -10,11 +10,10 @@ function importMapPlugin(): Plugin {
   const map = JSON.stringify(
     {
       imports: {
-        // Pin to the versions installed locally so runtime matches TypeScript types.
-        "@mysten/zklogin": "https://esm.sh/@mysten/zklogin@0.8.1",
+        // Pin to the version installed locally so runtime matches TypeScript types.
         // subpath imports like @mysten/sui/keypairs/ed25519 → trailing slash
-        "@mysten/sui": "https://esm.sh/@mysten/sui@1.45.2",
-        "@mysten/sui/": "https://esm.sh/@mysten/sui@1.45.2/",
+        "@mysten/sui": "https://esm.sh/@mysten/sui@2.18.0",
+        "@mysten/sui/": "https://esm.sh/@mysten/sui@2.18.0/",
       },
     },
     null,
