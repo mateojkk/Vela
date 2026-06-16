@@ -215,21 +215,39 @@ async def build_context(memwal, user_email: str, message: str, conversation_hist
                 .limit(20)
                 .execute()
             )
-            if r.data:
-                lines = []
-                for p in r.data:
-                    home = p.get("home_team") or ""
-                    away = p.get("away_team") or ""
-                    question = p.get("question") or ""
-                    pick = p.get("user_pick") or ""
-                    outcome = p.get("outcome") or ""
-                    match_label = f"{home} vs {away}" if home and away else question
-                    status = f"({outcome})" if outcome else "(pending)"
-                    lines.append(f"- {match_label}: picked {pick} {status}")
-                if lines:
-                    parts.append("User's recent predictions:\n" + "\n".join(lines))
-        except Exception:
-            pass
+            preds = r.data or []
+        except Exception as e:
+            msg = str(e)
+            missing = any(c in msg for c in ("home_team", "away_team", "question", "take", "confidence"))
+            if missing and "42703" in msg:
+                try:
+                    r = (
+                        supabase.table("predictions")
+                        .select("user_pick, resolved, outcome")
+                        .eq("user_id", user_id)
+                        .order("created_at", desc=True)
+                        .limit(20)
+                        .execute()
+                    )
+                    preds = r.data or []
+                except Exception:
+                    preds = []
+            else:
+                preds = []
+
+        if preds:
+            lines = []
+            for p in preds:
+                home = p.get("home_team") or ""
+                away = p.get("away_team") or ""
+                question = p.get("question") or ""
+                pick = p.get("user_pick") or ""
+                outcome = p.get("outcome") or ""
+                match_label = f"{home} vs {away}" if home and away else question
+                status = f"({outcome})" if outcome else "(pending)"
+                lines.append(f"- {match_label}: picked {pick} {status}")
+            if lines:
+                parts.append("User's recent predictions:\n" + "\n".join(lines))
     if failed_preds:
         parts.append("User's failed predictions (use these for roasting):\n" + "\n".join(f"- {t}" for t in failed_preds[:5]))
     if user_opinions:

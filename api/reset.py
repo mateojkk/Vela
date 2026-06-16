@@ -14,12 +14,12 @@ from common import (
     send_json,
     require_auth_email,
     read_json_body,
+    options,
 )
 
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
-        from common import options
         options(self)
 
     def do_POST(self):

@@ -1,10 +1,13 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from common import get_supabase, send_json, require_auth_email
+from common import get_supabase, send_json, require_auth_email, options
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        options(self)
+
     def do_GET(self):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)

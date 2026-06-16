@@ -1,4 +1,3 @@
 memwal
 groq
 supabase
-requests

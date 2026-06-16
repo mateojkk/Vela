@@ -32,6 +32,7 @@ cd frontend && npm run lint
 - `api/common.py` — shared helpers for Supabase/Groq/MemWal clients, auth, CORS, and JSON responses. Handlers should use these instead of module-level client creation.
 - `api/polymarket.py` — shared Polymarket Gamma API client. `fixtures.py` and `markets.py` both depend on it. There is no football-data.org integration.
 - `shared/types.ts` — shared TypeScript types.
+- `supabase/schema.sql` — database schema. Run this in the Supabase SQL Editor before using the app.
 - `dev.mjs` + `api/_dev_handler.py` — local dev harness that mimics Vercel's `/api/*.py` routing.
 - `vercel.json` — Vercel routing and the hourly `/api/resolve` cron.
 
