@@ -1,13 +1,16 @@
-import { getZkLoginSession } from "./zklogin";
-
 const API_BASE = "/api";
 
+let currentWalletAddress: string | null = null;
+
+export function setCurrentWalletAddress(address: string | null) {
+  currentWalletAddress = address;
+}
+
 function getAuthHeaders(): Record<string, string> {
-  const session = getZkLoginSession();
-  if (!session) return {};
+  if (!currentWalletAddress) return {};
   return {
-    "X-Sui-Address": session.address,
-    "X-User-Email": session.email,
+    "X-Sui-Address": currentWalletAddress,
+    "X-User-Email": currentWalletAddress,
   };
 }
 

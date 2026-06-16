@@ -1,5 +1,7 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useMemWal } from "../hooks/useMemWal";
 import Layout from "../components/Layout";
 
 interface Memory {
@@ -7,6 +9,24 @@ interface Memory {
   text: string;
   distance: number;
   type: "prediction" | "miss" | "hit" | "opinion" | "rivalry" | "match" | "memory";
+}
+
+const PROBE_QUERIES = [
+  "prediction match outcome correct miss",
+  "team opinion take player performance",
+  "rivalry debate argument hot take",
+  "World Cup 2026 tournament matchday goals",
+];
+
+function classifyMemory(text: string): Memory["type"] {
+  const t = text.toLowerCase();
+  if (["wrong", "miss", "incorrect", "bad", "lost", "fail"].some((w) => t.includes(w))) return "miss";
+  if (["correct", "right", "won", "nailed", "good call"].some((w) => t.includes(w))) return "hit";
+  if (["predict", "pick", "chose", "bet", "call"].some((w) => t.includes(w))) return "prediction";
+  if (["think", "believe", "opinion", "take", "feel", "reckon"].some((w) => t.includes(w))) return "opinion";
+  if (["rival", "debate", "argue", "disagree"].some((w) => t.includes(w))) return "rivalry";
+  if (["goal", "match", "game", "fixture", "played"].some((w) => t.includes(w))) return "match";
+  return "memory";
 }
 
 interface MemoryGroup {
@@ -169,10 +189,21 @@ function drawGlobeFrame(
 }
 
 export default function MemoryMap() {
+  const { username } = useParams<{ username?: string }>();
   const { user } = useAuth();
+  const {
+    memwal,
+    authorized,
+    loading: memwalLoading,
+    error: memwalError,
+    authorize,
+    recall,
+  } = useMemWal();
+  const isOwner = !!user && (!username || user.username === username);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authChecking, setAuthChecking] = useState(false);
   const [pulse, setPulse] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [search, setSearch] = useState("");
@@ -208,42 +239,61 @@ export default function MemoryMap() {
     return points;
   }, [memories]);
 
-  const fetchMemories = useCallback(async () => {
-    if (!user) return;
-    const id = user.email || user.id;
-    try {
-      const res = await fetch(`/api/memory?email=${encodeURIComponent(id)}&limit=80`, {
-        headers: { "X-User-Email": user.email || "", "X-Sui-Address": user.id || "" },
-      });
-      if (!res.ok) return;
-      const data: { memories: Memory[]; total: number } = await res.json();
-      let added = 0;
-      const fresh: Memory[] = [];
-      for (const mem of data.memories) {
-        if (seenIds.current.has(mem.blob_id)) continue;
-        seenIds.current.add(mem.blob_id);
-        fresh.push(mem);
-        added++;
-      }
-      if (added > 0) {
-        setMemories((prev) => [...fresh, ...prev].slice(0, 200));
-        setPulse(true);
-        setTimeout(() => setPulse(false), 1200);
-      }
-      setLastRefresh(new Date());
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchMemories();
-    const id = setInterval(fetchMemories, POLL_MS);
-    return () => clearInterval(id);
-  }, [fetchMemories]);
+    if (!isOwner || !memwal) return;
+    let cancelled = false;
+
+    const load = () => {
+      setLoading(true);
+      Promise.all(
+        PROBE_QUERIES.map((q) =>
+          recall(q, { limit: 20 })
+            .then((r) => r.results)
+            .catch(() => [])
+        )
+      )
+        .then((batches) => {
+          if (cancelled) return;
+          const seen = new Set<string>();
+          const fresh: Memory[] = [];
+          let added = 0;
+          for (const batch of batches) {
+            for (const m of batch) {
+              if (seen.has(m.blob_id)) continue;
+              seen.add(m.blob_id);
+              if (seenIds.current.has(m.blob_id)) continue;
+              seenIds.current.add(m.blob_id);
+              fresh.push({
+                blob_id: m.blob_id,
+                text: m.text,
+                distance: m.distance,
+                type: classifyMemory(m.text),
+              });
+              added++;
+            }
+          }
+          if (added > 0) {
+            setMemories((prev) => [...fresh, ...prev].slice(0, 200));
+            setPulse(true);
+            setTimeout(() => setPulse(false), 1200);
+          }
+          setLastRefresh(new Date());
+        })
+        .catch(() => {
+          // ignore
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+
+    load();
+    const id = setInterval(load, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isOwner, memwal, recall]);
 
   // Globe animation loop
   useEffect(() => {
@@ -330,9 +380,52 @@ export default function MemoryMap() {
     setSelectedMemory(null);
   };
 
+  const needsAuth = isOwner && memwal && authorized === false;
+
+  if (!isOwner) {
+    return (
+      <Layout>
+        <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center font-mono">
+          <div className="mb-4 text-4xl">🔒</div>
+          <h2 className="mb-2 text-lg font-semibold text-foreground">
+            @{username || "unknown"}'s memory map
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Memories are encrypted to the owner's wallet. Connect as @{username || "this user"} to view them.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="mx-auto max-w-5xl">
+        {needsAuth && (
+          <div className="mb-4 rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-foreground">
+                Authorize Walrus Memory to load your memory map.
+              </span>
+              <button
+                onClick={async () => {
+                  setAuthChecking(true);
+                  try {
+                    await authorize();
+                  } finally {
+                    setAuthChecking(false);
+                  }
+                }}
+                disabled={authChecking || memwalLoading}
+                className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {authChecking || memwalLoading ? "Authorizing…" : "Authorize"}
+              </button>
+            </div>
+            {memwalError && <p className="mt-2 text-xs text-danger">{memwalError}</p>}
+          </div>
+        )}
+
         {/* Stats row */}
         <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded border border-border bg-card/80 p-3 text-center">

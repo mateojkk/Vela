@@ -30,7 +30,6 @@ from handlers import fixtures
 from handlers import health
 from handlers import leaderboard
 from handlers import markets
-from handlers import memory
 from handlers import og
 from handlers import predict
 from handlers import profile
@@ -48,7 +47,6 @@ HANDLERS = {
     "health": health.handler,
     "leaderboard": leaderboard.handler,
     "markets": markets.handler,
-    "memory": memory.handler,
     "og": og.handler,
     "predict": predict.handler,
     "profile": profile.handler,

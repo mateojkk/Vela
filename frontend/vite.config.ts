@@ -3,8 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 /**
- * Injects a browser-native importmap that maps @mysten/* packages to esm.sh.
- * This allows the app to use Sui/zkLogin without needing them in node_modules.
+ * Injects a browser-native importmap that maps @mysten/sui to esm.sh.
+ * dapp-kit and other @mysten/* helpers are bundled; only the heavy
+ * @mysten/sui SDK is loaded from the CDN at runtime.
  */
 function importMapPlugin(): Plugin {
   const map = JSON.stringify(
@@ -41,9 +42,10 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // Don't bundle @mysten/* — leave them as external ESM imports
-      // resolved at runtime by the importmap above.
-      external: (id: string) => id.startsWith("@mysten/"),
+      // Keep the heavy @mysten/sui SDK external and resolve it via the importmap.
+      // Bundle dapp-kit and other @mysten/* helpers so they don't need CDN entries.
+      external: (id: string) =>
+        id === "@mysten/sui" || id.startsWith("@mysten/sui/"),
     },
   },
 });

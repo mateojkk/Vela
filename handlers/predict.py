@@ -1,32 +1,8 @@
 import uuid
-import asyncio
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
-from lib.common import get_supabase, get_memwal, send_json, require_auth_email, read_json_body
-
-
-async def _persist_prediction(
-    user_email: str,
-    remember_text: str,
-    analyze_text: str,
-    now: datetime,
-    vela_text: str | None,
-    vela_analyze_text: str | None,
-):
-    """Write prediction memory to Walrus. Failures are logged, not raised."""
-    memwal = get_memwal(user_email)
-    try:
-        await memwal.remember_and_wait(remember_text, timeout_ms=5000)
-        await memwal.analyze_and_wait(analyze_text, occurred_at=now, timeout_ms=5000)
-        if vela_text:
-            await memwal.remember_and_wait(vela_text, timeout_ms=5000)
-        if vela_analyze_text:
-            await memwal.analyze_and_wait(vela_analyze_text, occurred_at=now, timeout_ms=5000)
-    except Exception as e:
-        print(f"[predict] memwal write failed: {e}")
-    finally:
-        await memwal.close()
+from lib.common import get_supabase, send_json, require_auth_email, read_json_body
 
 
 class handler(BaseHTTPRequestHandler):
@@ -135,18 +111,16 @@ class handler(BaseHTTPRequestHandler):
                 total = current.data[0]["total_predictions"] + 1
                 supabase.table("leaderboard").update({"total_predictions": total}).eq("user_id", user_id).execute()
 
-            # Persist to MemWal in the background; failures don't fail the request.
-            try:
-                asyncio.run(_persist_prediction(
-                    user_email, remember_text, analyze_text, now, vela_text, vela_analyze_text
-                ))
-            except Exception:
-                pass
-
             send_json(self, 201, {
                 "status": "ok",
                 "prediction_id": pred_id,
                 "vela_pick": vela_pick,
+                "memory_texts": {
+                    "remember": remember_text,
+                    "analyze": analyze_text,
+                    "vela_remember": vela_text,
+                    "vela_analyze": vela_analyze_text,
+                },
             })
 
         except Exception as e:

@@ -1,35 +1,8 @@
 import uuid
-import asyncio
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from memwal import RecallParams
-from lib.common import get_supabase, get_memwal, send_json, require_auth_email, read_json_body
-
-
-async def fetch_recent_chats(email: str) -> list[dict]:
-    """Fetch recent conversations from the user's Walrus Memory namespace."""
-    memwal = get_memwal(email)
-    try:
-        result = await memwal.recall(
-            RecallParams(query="User said: Agent replied:", limit=6)
-        )
-        chats = []
-        if result and result.results:
-            for r in result.results:
-                text = r.text
-                if "User said:" in text and "Agent replied:" in text:
-                    parts = text.split("Agent replied:")
-                    user_part = parts[0].replace("User said:", "").strip()
-                    agent_part = parts[1].strip()
-                    if user_part and agent_part:
-                        chats.append({"message": user_part, "reply": agent_part})
-        return chats
-    except Exception as e:
-        print(f"[profile] Error fetching recent chats: {e}")
-        return []
-    finally:
-        await memwal.close()
+from lib.common import get_supabase, send_json, require_auth_email, read_json_body
 
 
 def _sync_leaderboard(supabase, user: dict):
@@ -123,6 +96,41 @@ def _select_leaderboard(supabase, user_id: str) -> dict | None:
     return None
 
 
+def _select_recent_chats(supabase, user_id: str, *, limit: int = 6) -> list[dict]:
+    """Fetch recent chat exchanges from Supabase chat sessions."""
+    try:
+        sessions = (
+            supabase.table("chat_sessions")
+            .select("id")
+            .eq("user_id", user_id)
+            .order("updated_at", desc=True)
+            .limit(3)
+            .execute()
+        )
+        chats: list[dict] = []
+        for s in (sessions.data or []):
+            msgs = (
+                supabase.table("chat_messages")
+                .select("role, content")
+                .eq("session_id", s["id"])
+                .order("created_at", desc=True)
+                .limit(2)
+                .execute()
+            )
+            rows = msgs.data or []
+            if len(rows) == 2:
+                user_msg = next((m for m in rows if m["role"] == "user"), None)
+                agent_msg = next((m for m in rows if m["role"] == "assistant"), None)
+                if user_msg and agent_msg:
+                    chats.append({"message": user_msg["content"], "reply": agent_msg["content"]})
+            if len(chats) >= limit:
+                break
+        return chats
+    except Exception as exc:
+        print(f"[profile] Error fetching recent chats: {exc}")
+        return []
+
+
 def _select_predictions(supabase, user_id: str, *, limit: int = 20) -> list[dict]:
     """Fetch recent predictions, falling back if home_team/away_team/question/
     take/confidence columns don't exist yet."""
@@ -198,12 +206,7 @@ class handler(BaseHTTPRequestHandler):
                     }
 
                 preds = _select_predictions(supabase, user["id"], limit=20)
-
-                recent_chats = []
-                try:
-                    recent_chats = asyncio.run(fetch_recent_chats(user["email"]))
-                except Exception as exc:
-                    print(f"[profile] Error fetching chats: {exc}")
+                recent_chats = _select_recent_chats(supabase, user["id"], limit=6)
 
                 send_json(self, 200, {
                     "user": user,

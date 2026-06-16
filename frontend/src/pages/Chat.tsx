@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useMemWal } from "../hooks/useMemWal";
 import { apiGet, apiPost } from "../lib/api";
 import type { AgentMessage, ChatSession } from "../../../shared/types";
 import Layout from "../components/Layout";
@@ -36,6 +37,13 @@ interface BriefData {
   rank: number;
 }
 
+interface MemoryContext {
+  relevant_memories: string[];
+  failed_predictions: string[];
+  user_opinions: string[];
+  vela_predictions: string[];
+}
+
 function formatRelative(iso: string): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -50,6 +58,16 @@ function formatRelative(iso: string): string {
 
 export default function Chat() {
   const { user } = useAuth();
+  const {
+    memwal,
+    authorized,
+    loading: memwalLoading,
+    error: memwalError,
+    authorize,
+    remember,
+    recall,
+    clearError,
+  } = useMemWal();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,6 +77,7 @@ export default function Chat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(false);
   const sessionsRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +166,27 @@ export default function Chat() {
     inputRef.current?.focus();
   }
 
+  async function buildMemoryContext(message: string): Promise<MemoryContext> {
+    const [relevant, failed, opinions, vela] = await Promise.all([
+      recall(message, { limit: 5 }).then((r) => r.results.map((m) => m.text)).catch(() => []),
+      recall("wrong incorrect miss fail", { limit: 5 })
+        .then((r) => r.results.map((m) => m.text))
+        .catch(() => []),
+      recall("think believe feel reckon opinion take", { limit: 5 })
+        .then((r) => r.results.map((m) => m.text))
+        .catch(() => []),
+      recall("Vela predicted", { limit: 20 })
+        .then((r) => r.results.map((m) => m.text))
+        .catch(() => []),
+    ]);
+    return {
+      relevant_memories: relevant,
+      failed_predictions: failed,
+      user_opinions: opinions,
+      vela_predictions: vela,
+    };
+  }
+
   async function sendMessage(text?: string) {
     const msg = text || input.trim();
     if (!msg || loading) return;
@@ -158,17 +198,34 @@ export default function Chat() {
     setShowBrief(false);
 
     try {
+      let memoryContext: MemoryContext | undefined;
+      if (memwal && authorized) {
+        try {
+          memoryContext = await buildMemoryContext(msg);
+        } catch (err) {
+          console.error("Memory recall failed:", err);
+        }
+      }
+
       const data = await apiPost<{ reply: string; session_id: string; title?: string }>("/agent", {
         user_email: user?.email,
         message: msg,
         session_id: activeSessionId,
         conversation_history: messages.slice(-10),
+        memory_context: memoryContext,
       });
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
       if (data.session_id && data.session_id !== activeSessionId) {
         setActiveSessionId(data.session_id);
       }
       refreshSessions();
+
+      // Fire-and-forget memory write.
+      if (memwal && authorized) {
+        remember(`User said: ${msg}\nAgent replied: ${data.reply}`).catch((err) => {
+          console.error("Memory write failed:", err);
+        });
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Something broke. Even I have off days. Try again.";
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
@@ -184,9 +241,22 @@ export default function Chat() {
     }
   }
 
+  async function handleAuthorize() {
+    setAuthChecking(true);
+    clearError();
+    try {
+      await authorize();
+    } finally {
+      setAuthChecking(false);
+    }
+  }
+
   const activeTitle = activeSessionId
     ? sessions.find((s) => s.id === activeSessionId)?.title || "Chat"
     : "New chat";
+
+  const memwalReady = !!memwal;
+  const needsAuth = memwalReady && authorized === false;
 
   // Left slot in the top bar: sessions dropdown + current title
   const leftSlot = (
@@ -269,6 +339,25 @@ export default function Chat() {
   return (
     <Layout leftSlot={leftSlot}>
       <div className="mx-auto flex h-[calc(100dvh-7rem)] max-w-3xl flex-col">
+        {/* Authorization banner */}
+        {needsAuth && (
+          <div className="mb-3 rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-foreground">
+                Authorize Walrus Memory so Vela can remember your takes and roast your bad calls.
+              </span>
+              <button
+                onClick={handleAuthorize}
+                disabled={authChecking || memwalLoading}
+                className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {authChecking || memwalLoading ? "Authorizing…" : "Authorize"}
+              </button>
+            </div>
+            {memwalError && <p className="mt-2 text-xs text-danger">{memwalError}</p>}
+          </div>
+        )}
+
         {/* Messages */}
         <div className="thin-scrollbar flex-1 overflow-y-auto pb-4">
           {messages.length === 0 && !showBrief && (

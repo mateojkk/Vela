@@ -3,8 +3,7 @@ import asyncio
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
-from memwal import RecallParams
-from lib.common import get_supabase, get_groq, get_memwal, send_json, require_auth_email, read_json_body, options
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, read_json_body, options
 from handlers.chat import auto_title
 from lib.polymarket import fetch_wc_events, group_events_by_match
 
@@ -34,44 +33,6 @@ Memory rules:
 - When you reference a memory, make it feel natural — like you just remembered, not like you queried a database."""
 
 
-async def fetch_profile(memwal):
-    try:
-        mems = await memwal.recall(RecallParams(query="prediction opinion take", limit=10))
-        if not mems.results:
-            return None
-        ans = await memwal.ask(
-            "Summarize this user in 2-3 sentences: their football opinions, "
-            "prediction patterns, team loyalties, and anything notable. Be specific."
-        )
-        return ans.answer if ans else None
-    except Exception:
-        return None
-
-
-async def fetch_relevant(memwal, message: str):
-    try:
-        rel = await memwal.recall(RecallParams(query=message, limit=5))
-        return [m.text for m in rel.results] if rel.results else []
-    except Exception:
-        return []
-
-
-async def fetch_failed_predictions(memwal):
-    try:
-        rel = await memwal.recall(RecallParams(query="wrong incorrect miss fail", limit=8))
-        return [m.text for m in rel.results] if rel.results else []
-    except Exception:
-        return []
-
-
-async def fetch_user_opinions(memwal):
-    try:
-        rel = await memwal.recall(RecallParams(query="think believe feel reckon opinion take", limit=8))
-        return [m.text for m in rel.results] if rel.results else []
-    except Exception:
-        return []
-
-
 def get_todays_fixtures():
     events = fetch_wc_events()
     if not events:
@@ -94,31 +55,19 @@ def get_todays_fixtures():
     return fixtures
 
 
-async def fetch_vela_record(memwal):
-    try:
-        vela_preds = await memwal.recall(RecallParams(query="Vela predicted", limit=20))
-        if not vela_preds.results:
-            return None
-        vela_correct = sum(1 for m in vela_preds.results if "correct" in m.text.lower())
-        vela_total = len(vela_preds.results)
-        return {
-            "correct": vela_correct,
-            "total": vela_total,
-            "accuracy": round(vela_correct / vela_total * 100, 1) if vela_total > 0 else 0,
-        }
-    except Exception:
+def _format_vela_record(vela_predictions: list[str]) -> dict | None:
+    if not vela_predictions:
         return None
+    total = len(vela_predictions)
+    correct = sum(1 for t in vela_predictions if "correct" in t.lower())
+    return {
+        "correct": correct,
+        "total": total,
+        "accuracy": round(correct / total * 100, 1) if total > 0 else 0,
+    }
 
 
-async def build_context(memwal, user_email: str, message: str, conversation_history: list):
-    memory_context, relevant_texts, vela_record, failed_preds, user_opinions = await asyncio.gather(
-        fetch_profile(memwal),
-        fetch_relevant(memwal, message),
-        fetch_vela_record(memwal),
-        fetch_failed_predictions(memwal),
-        fetch_user_opinions(memwal),
-    )
-
+async def build_context(memory_context: dict | None, user_email: str, conversation_history: list):
     supabase = get_supabase()
 
     # Try rich user select first; fall back if display_name/avatar_url
@@ -167,6 +116,12 @@ async def build_context(memwal, user_email: str, message: str, conversation_hist
                 )
                 record = lb.data[0] if lb.data else None
 
+    relevant_texts = (memory_context or {}).get("relevant_memories", [])
+    failed_preds = (memory_context or {}).get("failed_predictions", [])
+    user_opinions = (memory_context or {}).get("user_opinions", [])
+    vela_predictions = (memory_context or {}).get("vela_predictions", [])
+    vela_record = _format_vela_record(vela_predictions)
+
     parts = []
     if display_name:
         parts.append(f"The user's display name is \"{display_name}\" (use this to address them).")
@@ -176,9 +131,6 @@ async def build_context(memwal, user_email: str, message: str, conversation_hist
         parts.append(f"User's name is @{username}.")
     if avatar_url:
         parts.append(f"They have a custom avatar/profile picture set.")
-    if memory_context:
-        who = display_name or (f"@{username}" if username else "this user")
-        parts.append(f"What you remember about {who}:\n{memory_context}")
     if record:
         parts.append(
             f"Their record: {record['correct']}/{record['total_predictions']} correct "
@@ -307,6 +259,7 @@ class handler(BaseHTTPRequestHandler):
         session_id = body.get("session_id") or ""
         session_id = session_id.strip() if isinstance(session_id, str) else None
         client_history = body.get("conversation_history") or []
+        memory_context = body.get("memory_context") or None
 
         if not user_email or not message:
             send_json(self, 400, {"error": "Missing user_email or message"})
@@ -317,7 +270,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            asyncio.run(self._respond(user_email, message, session_id, client_history))
+            asyncio.run(self._respond(user_email, message, session_id, client_history, memory_context))
         except Exception as exc:
             print(f"[agent] unhandled exception: {exc!r}")
             send_json(self, 500, {"error": "I crashed. Even AI assistants have off days. Try again?"})
@@ -328,8 +281,8 @@ class handler(BaseHTTPRequestHandler):
         message: str,
         session_id: str | None,
         client_history: list,
+        memory_context: dict | None,
     ):
-        memwal = get_memwal(user_email)
         supabase = get_supabase()
         user_id = _user_id_for(supabase, user_email)
         if not user_id:
@@ -365,7 +318,7 @@ class handler(BaseHTTPRequestHandler):
         # Build context with a hard timeout so the user never waits forever.
         try:
             context_block = await asyncio.wait_for(
-                build_context(memwal, user_email, message, conversation_history),
+                build_context(memory_context, user_email, conversation_history),
                 timeout=8.0,
             )
         except (asyncio.TimeoutError, Exception) as ctx_err:
@@ -424,26 +377,6 @@ class handler(BaseHTTPRequestHandler):
             "session_id": session_id,
             "title": title,
         })
-
-        # MemWal memory writes are fire-and-forget; failures don't fail the response.
-        try:
-            now = datetime.now(timezone.utc)
-            await memwal.remember_and_wait(
-                f"User said: {message}\nAgent replied: {reply}",
-                timeout_ms=4000,
-            )
-            await memwal.analyze_and_wait(
-                f"Conversation about '{message[:100]}'. Vela replied with key points.",
-                occurred_at=now,
-                timeout_ms=4000,
-            )
-        except Exception as e:
-            print(f"[agent] memwal write failed: {e}")
-        finally:
-            try:
-                await memwal.close()
-            except Exception:
-                pass
 
 
 def _session_exists(supabase, session_id: str, user_id: str) -> bool:

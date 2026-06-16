@@ -10,8 +10,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from memwal import RecallParams
-from lib.common import get_supabase, get_groq, get_memwal, send_json, require_auth_email, options
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, options
 from lib.polymarket import fetch_wc_events, group_events_by_match
 
 
@@ -83,61 +82,38 @@ async def _build_brief(user_email: str):
             brief["accuracy"] = record.get("accuracy_pct", 0)
             brief["rank"] = record.get("rank", 0)
 
-    memwal = get_memwal(user_email)
-    try:
-        if brief["matches"]:
-            match_list = ", ".join(
-                f"{m['home']} vs {m['away']}" for m in brief["matches"][:4]
-            )
+    if brief["matches"]:
+        match_list = ", ".join(
+            f"{m['home']} vs {m['away']}" for m in brief["matches"][:4]
+        )
 
-            context = "No relevant context yet."
-            try:
-                recall = await memwal.recall(
-                    RecallParams(
-                        query=f"World Cup predictions today {match_list}",
-                        limit=6,
-                    )
-                )
-                if recall and recall.results:
-                    snippets = [r.text for r in recall.results if r.text]
-                    if snippets:
-                        context = " | ".join(snippets[:3])
-            except Exception:
-                pass
-
-            history = (
-                "No prediction history yet."
-                if not brief["total_predictions"]
-                else f"User has {brief['total_predictions']} predictions, {brief['accuracy']}% accuracy."
-            )
-            take_prompt = (
-                f"The World Cup today has these matches: {match_list}. "
-                f"{history} "
-                f"Some relevant context: {context}. "
-                f"Give 2-3 playful, friendly takes about today's matches. "
-                f"Be specific — name teams, reference storylines. "
-                f"Keep each take to 1 sentence. No intro, no outro."
-            )
-            try:
-                response = groq.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": take_prompt}],
-                    max_tokens=256,
-                    temperature=0.9,
-                )
-                takes_text = response.choices[0].message.content or ""
-                lines = [t.strip() for t in takes_text.split("\n") if t.strip()]
-                brief["vela_takes"] = [
-                    {"match": "all", "take": line}
-                    for line in lines[:3]
-                ]
-            except Exception as exc:
-                print(f"[brief] groq call failed: {exc}")
-    finally:
+        history = (
+            "No prediction history yet."
+            if not brief["total_predictions"]
+            else f"User has {brief['total_predictions']} predictions, {brief['accuracy']}% accuracy."
+        )
+        take_prompt = (
+            f"The World Cup today has these matches: {match_list}. "
+            f"{history} "
+            f"Give 2-3 playful, friendly takes about today's matches. "
+            f"Be specific — name teams, reference storylines. "
+            f"Keep each take to 1 sentence. No intro, no outro."
+        )
         try:
-            await memwal.close()
-        except Exception:
-            pass
+            response = groq.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": take_prompt}],
+                max_tokens=256,
+                temperature=0.9,
+            )
+            takes_text = response.choices[0].message.content or ""
+            lines = [t.strip() for t in takes_text.split("\n") if t.strip()]
+            brief["vela_takes"] = [
+                {"match": "all", "take": line}
+                for line in lines[:3]
+            ]
+        except Exception as exc:
+            print(f"[brief] groq call failed: {exc}")
 
     return brief
 

@@ -11,7 +11,6 @@ from http.server import BaseHTTPRequestHandler
 
 from supabase import create_client, Client
 from groq import Groq
-from memwal import MemWal
 
 
 @lru_cache(maxsize=1)
@@ -25,15 +24,6 @@ def get_supabase() -> Client:
 @lru_cache(maxsize=1)
 def get_groq() -> Groq:
     return Groq(api_key=os.environ["GROQ_API_KEY"])
-
-
-def get_memwal(namespace: str) -> MemWal:
-    return MemWal.create(
-        key=os.environ["MEMWAL_PRIVATE_KEY"],
-        account_id=os.environ["MEMWAL_ACCOUNT_ID"],
-        env="prod",
-        namespace=namespace,
-    )
 
 
 def send_json(

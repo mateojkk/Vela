@@ -1,14 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import {
-  getZkLoginSession,
-  clearZkLogin,
-  initZkLogin,
-  type ZkLoginSession,
-} from "../lib/zklogin";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit";
+import { setCurrentWalletAddress } from "../lib/api";
 
 export interface AuthUser {
-  id: string;       // Sui address
-  email: string;
+  id: string; // Sui address
+  email: string; // Sui address (used for backward-compatible API headers)
   username?: string;
   display_name?: string | null;
   avatar_url?: string | null;
@@ -17,107 +20,89 @@ export interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
   updateUser: (patch: Partial<AuthUser>) => void;
-  onZkLoginComplete: (session: ZkLoginSession) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const session = getZkLoginSession();
-    if (session) {
+async function loadProfile(
+  address: string
+): Promise<Omit<AuthUser, "id" | "email">> {
+  try {
+    const res = await fetch(
+      `/api/profile?email=${encodeURIComponent(address)}`,
+      {
+        headers: {
+          "X-Sui-Address": address,
+          "X-User-Email": address,
+        },
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const u = data.user;
       return {
-        id: session.address,
-        email: session.email,
-        username: session.username,
+        username: u?.username ?? undefined,
+        display_name: u?.display_name ?? null,
+        avatar_url: u?.avatar_url ?? null,
       };
     }
-    return null;
-  });
+  } catch {
+    // fall through to empty profile
+  }
+  return {};
+}
 
-  const [loading, setLoading] = useState(() => {
-    const session = getZkLoginSession();
-    return Boolean(session && !session.username);
-  });
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const account = useCurrentAccount();
+  const address = account?.address;
+  const { mutate: disconnect } = useDisconnectWallet();
 
-  const fetchUser = useCallback(async (session: ZkLoginSession) => {
-    try {
-      const res = await fetch(
-        `/api/profile?email=${encodeURIComponent(session.email)}`,
-        {
-          headers: {
-            "X-Sui-Address": session.address,
-            "X-User-Email": session.email,
-          },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const u = data.user;
-        setUser({
-          id: session.address,
-          email: session.email,
-          username: u?.username ?? session.username,
-          display_name: u?.display_name ?? null,
-          avatar_url: u?.avatar_url ?? null,
-        });
-
-        if (u?.username) {
-          const updatedSession: ZkLoginSession = { ...session, username: u.username };
-          sessionStorage.setItem("vela_zklogin", JSON.stringify(updatedSession));
-        }
-      } else {
-        setUser({ id: session.address, email: session.email, username: session.username });
-      }
-    } catch {
-      setUser({ id: session.address, email: session.email, username: session.username });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const checkSession = useCallback(async () => {
-    const session = getZkLoginSession();
-    if (!session) {
-      setLoading(false);
-      return;
-    }
-    await fetchUser(session);
-  }, [fetchUser]);
+  const [enrichedUser, setEnrichedUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    checkSession();
-  }, [checkSession]);
+    setCurrentWalletAddress(address ?? null);
+    if (!address) return;
 
-  const onZkLoginComplete = useCallback(
-    async (session: ZkLoginSession) => {
-      await fetchUser(session);
-    },
-    [fetchUser]
+    let cancelled = false;
+    loadProfile(address).then((profile) => {
+      if (cancelled) return;
+      setEnrichedUser({ id: address, email: address, ...profile });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  const user = useMemo(() => {
+    if (!address) return null;
+    return enrichedUser?.id === address
+      ? enrichedUser
+      : { id: address, email: address };
+  }, [address, enrichedUser]);
+
+  const loading = useMemo(
+    () => !!address && enrichedUser?.id !== address,
+    [address, enrichedUser]
   );
 
+  const signOut = useCallback(() => {
+    disconnect();
+    setCurrentWalletAddress(null);
+    setEnrichedUser(null);
+  }, [disconnect]);
+
   const refreshUser = useCallback(async () => {
-    const session = getZkLoginSession();
-    if (session) await fetchUser(session);
-  }, [fetchUser]);
+    if (!address) return;
+    const profile = await loadProfile(address);
+    setEnrichedUser({ id: address, email: address, ...profile });
+  }, [address]);
 
   const updateUser = useCallback((patch: Partial<AuthUser>) => {
-    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
-  }, []);
-
-  const signInWithGoogle = useCallback(async () => {
-    const url = await initZkLogin();
-    window.location.href = url;
-  }, []);
-
-  const signOut = useCallback(() => {
-    clearZkLogin();
-    setUser(null);
+    setEnrichedUser((prev) => (prev ? { ...prev, ...patch } : prev));
   }, []);
 
   return (
@@ -125,11 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         loading,
-        signInWithGoogle,
         signOut,
         refreshUser,
         updateUser,
-        onZkLoginComplete,
       }}
     >
       {children}

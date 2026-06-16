@@ -1,31 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #1a1a1a;
-  --color-foreground: #fbfbfb;
-  --color-card: #1f1f1f;
-  --color-card-foreground: #fbfbfb;
-  --color-popover: #1f1f1f;
-  --color-popover-foreground: #fbfbfb;
-  --color-primary: #38bdf8;
-  --color-primary-foreground: #1a1a1a;
-  --color-secondary: #262626;
-  --color-secondary-foreground: #fbfbfb;
-  --color-muted: #262626;
-  --color-muted-foreground: #a1a1aa;
-  --color-accent: #2a2a2a;
-  --color-accent-foreground: #fbfbfb;
+  --color-background: #0b0f19;
+  --color-foreground: #f8fafc;
+  --color-card: #111827;
+  --color-card-foreground: #f8fafc;
+  --color-popover: #111827;
+  --color-popover-foreground: #f8fafc;
+  --color-primary: #22d3ee;
+  --color-primary-foreground: #0b0f19;
+  --color-secondary: #1e1b4b;
+  --color-secondary-foreground: #f8fafc;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+  --color-accent: #2e1065;
+  --color-accent-foreground: #f8fafc;
   --color-destructive: #ef4444;
-  --color-success: #3fe77e;
-  --color-warning: #facc15;
-  --color-danger: #ff5c5c;
-  --color-border: #2e2e2e;
-  --color-input: #2e2e2e;
-  --color-ring: #525252;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-border: #1e293b;
+  --color-input: #1e293b;
+  --color-ring: #22d3ee;
+  --color-walrus-purple: #7c3aed;
+  --color-walrus-cyan: #22d3ee;
+  --color-walrus-deep: #0b0f19;
+  --color-walrus-lavender: #c4b5fd;
+  --color-wc-gold: #fbbf24;
+  --color-wc-green: #059669;
   --color-chalk-green: #b4d99a;
-  --color-chalk-yellow: #dcd49b;
-  --color-chalk-red: #d68a7e;
-  --color-chalk-gold: #e0c98c;
+  --color-chalk-yellow: #fcd34d;
+  --color-chalk-red: #f87171;
+  --color-chalk-gold: #fbbf24;
   --color-chalk-blue: #a8c4d6;
   --color-chalk-indigo: #9a9cc4;
   --color-chalk-gray: #9a9a9a;
@@ -39,27 +45,27 @@
 
 :root {
   color-scheme: dark;
-  --background: #1a1a1a;
-  --foreground: #fbfbfb;
-  --card: #1f1f1f;
-  --card-foreground: #fbfbfb;
-  --popover: #1f1f1f;
-  --popover-foreground: #fbfbfb;
-  --primary: #38bdf8;
-  --primary-foreground: #1a1a1a;
-  --secondary: #262626;
-  --secondary-foreground: #fbfbfb;
-  --muted: #262626;
-  --muted-foreground: #a1a1aa;
-  --accent: #2a2a2a;
-  --accent-foreground: #fbfbfb;
+  --background: #0b0f19;
+  --foreground: #f8fafc;
+  --card: #111827;
+  --card-foreground: #f8fafc;
+  --popover: #111827;
+  --popover-foreground: #f8fafc;
+  --primary: #22d3ee;
+  --primary-foreground: #0b0f19;
+  --secondary: #1e1b4b;
+  --secondary-foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #2e1065;
+  --accent-foreground: #f8fafc;
   --destructive: #ef4444;
-  --success: #3fe77e;
-  --warning: #facc15;
-  --danger: #ff5c5c;
-  --border: #2e2e2e;
-  --input: #2e2e2e;
-  --ring: #525252;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #22d3ee;
   --radius: 0.625rem;
 }
 
@@ -79,6 +85,10 @@ html {
 
 body {
   background-color: var(--background);
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(124, 58, 237, 0.12) 0%, transparent 35%),
+    radial-gradient(circle at 80% 100%, rgba(34, 211, 238, 0.08) 0%, transparent 35%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;

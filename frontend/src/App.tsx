@@ -12,7 +12,6 @@ import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
 import MemoryMap from "./pages/MemoryMap";
 import Predictions from "./pages/Predictions";
-import AuthCallback from "./pages/AuthCallback";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient({
@@ -75,7 +74,6 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route
                 path="/"
                 element={
@@ -95,14 +93,8 @@ export default function App() {
               <Route path="/u/:username" element={<Profile />} />
               <Route path="/u/:username/predictions" element={<Predictions />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route
-                path="/memory"
-                element={
-                  <ProtectedRoute>
-                    <MemoryMap />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/memory" element={<MemoryMap />} />
+              <Route path="/memory/:username" element={<MemoryMap />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

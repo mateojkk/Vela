@@ -1,3 +1,2 @@
-memwal
 groq
 supabase

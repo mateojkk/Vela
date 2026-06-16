@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiPost } from "../lib/api";
+import { useMemWal } from "../hooks/useMemWal";
 import ShareButton from "./ShareButton";
 import type { MarketGroup, MarketSubMarket } from "../../../shared/types";
 
@@ -137,6 +138,7 @@ function formatCents(p: number): string {
 }
 
 export default function PredictionModal({ marketGroup, user, onClose }: Props) {
+  const { memwal, authorized, remember } = useMemWal();
   const [selected, setSelected] = useState<OutcomeOption | null>(null);
   const [confidence, setConfidence] = useState(5);
   const [take, setTake] = useState("");
@@ -171,7 +173,16 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
     if (!selected) return;
     setLoading(true);
     try {
-      const data = await apiPost<{ prediction_id: string; vela_pick: string }>("/predict", {
+      const data = await apiPost<{
+        prediction_id: string;
+        vela_pick: string;
+        memory_texts: {
+          remember: string;
+          analyze: string;
+          vela_remember: string | null;
+          vela_analyze: string | null;
+        };
+      }>("/predict", {
         user_email: user.email,
         type: "market",
         external_id: selected.subMarket.id,
@@ -188,6 +199,24 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
         away_team: match?.away,
       });
       setResult({ pred_id: data.prediction_id, vela_pick: data.vela_pick });
+
+      // Write prediction memories to Walrus from the frontend.
+      if (memwal && authorized) {
+        const { memory_texts } = data;
+        const writes: Promise<unknown>[] = [
+          remember(memory_texts.remember),
+          remember(memory_texts.analyze),
+        ];
+        if (memory_texts.vela_remember) {
+          writes.push(remember(memory_texts.vela_remember));
+        }
+        if (memory_texts.vela_analyze) {
+          writes.push(remember(memory_texts.vela_analyze));
+        }
+        Promise.all(writes).catch((err) => {
+          console.error("Prediction memory write failed:", err);
+        });
+      }
     } catch {
       setError("Something broke. Even predictions have off days. Try again.");
     }

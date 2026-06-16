@@ -27,10 +27,10 @@ cd frontend && npm run lint
 
 ## Architecture
 
-- `frontend/` — React 19 + TypeScript + Tailwind CSS v4 + Vite. Routes in `src/pages/`, auth in `src/hooks/useAuth.tsx`, API client in `src/lib/api.ts`, zkLogin in `src/lib/zklogin.ts`.
+- `frontend/` — React 19 + TypeScript + Tailwind CSS v4 + Vite. Routes in `src/pages/`, auth in `src/hooks/useAuth.tsx`, API client in `src/lib/api.ts`, MemWal integration in `src/hooks/useMemWal.ts`.
 - `api/index.py` — single Vercel Function entry point. It routes `/api/*` requests to the appropriate handler module to stay within the Hobby plan's 12-function limit.
 - `handlers/` — Python handler modules. Each module must expose `class handler(BaseHTTPRequestHandler)`. They live outside `api/` so Vercel does not auto-detect each one as a separate Serverless Function.
-- `lib/common.py` — shared helpers for Supabase/Groq/MemWal clients, auth, CORS, and JSON responses. Handlers should use these instead of module-level client creation.
+- `lib/common.py` — shared helpers for Supabase/Groq clients, auth, CORS, and JSON responses. Handlers should use these instead of module-level client creation.
 - `lib/polymarket.py` — shared Polymarket Gamma API client. `fixtures.py` and `markets.py` both depend on it. There is no football-data.org integration.
 - `shared/types.ts` — shared TypeScript types.
 - `supabase/schema.sql` — database schema. Run this in the Supabase SQL Editor before using the app.
@@ -42,28 +42,28 @@ cd frontend && npm run lint
 Copy `.env.example` to `.env` at repo root. **Two independent parsers** load `.env`: `dev.mjs` (Node, no quote stripping) and `api/_dev_handler.py` (Python, strips quotes). Neither uses `python-dotenv`.
 
 Required backend keys:
-- `MEMWAL_PRIVATE_KEY`, `MEMWAL_ACCOUNT_ID`, `MEMWAL_SERVER_URL` — Walrus Memory.
+- `MEMWAL_ACCOUNT_ID`, `MEMWAL_SERVER_URL` — shared Walrus Memory account (project-funded storage). The backend no longer writes to MemWal; the frontend does.
 - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` — Python backend uses the service key; RLS is enabled but bypassed by service-key access.
 - `GROQ_API_KEY` — LLM.
 
 Frontend env vars (Vite, prefix `VITE_`):
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-- `VITE_GOOGLE_CLIENT_ID` — Google OAuth for zkLogin.
-- `VITE_SUI_NETWORK` — defaults to `testnet` if unset.
+- `VITE_SUI_NETWORK` — defaults to `mainnet` if unset.
+- `VITE_MEMWAL_SERVER_URL`, `VITE_MEMWAL_ACCOUNT_ID`, `VITE_MEMWAL_PACKAGE_ID` — Walrus Memory frontend client and on-chain delegate-key authorization.
 
 `FOOTBALL_DATA_API_KEY` appears in `.env.example` but is unused by any handler.
 
 ## Auth and API conventions
 
-- Authentication is Sui zkLogin via Google. The frontend persists the session in `sessionStorage` under `vela_zklogin`.
-- Authenticated requests send `X-User-Email` and `X-Sui-Address` headers via `src/lib/api.ts`.
+- Authentication is Sui wallet connect via `@mysten/dapp-kit`. The frontend derives the user from the connected account.
+- Authenticated requests send `X-User-Email` and `X-Sui-Address` headers via `src/lib/api.ts`. The wallet address substitutes for the legacy email/user ID.
 - Python endpoints that require auth check `self.headers.get("X-User-Email")`. Use `common.require_auth_email()`.
 - Profile endpoints: `GET /api/profile?email=...` requires auth; `GET /api/profile?username=...` is public and strips `email` from the response.
 
 ## Frontend toolchain quirks
 
 - Tailwind CSS v4 is imported in `frontend/src/index.css` with `@import "tailwindcss";`; there is no `tailwind.config.js`. Custom theme tokens are defined via `@theme` in the same file.
-- `@mysten/sui` and `@mysten/zklogin` are **not** bundled. `vite.config.ts` externalizes them and injects an importmap pointing to `https://esm.sh/`. `index.html` CSP allows `https://esm.sh`.
+- `@mysten/sui` is **not** bundled; `vite.config.ts` externalizes it and injects an importmap pointing to `https://esm.sh/`. `@mysten/dapp-kit` and `@mysten-incubation/memwal` are bundled. `index.html` CSP allows `https://esm.sh`.
 - `frontend/tsconfig.json` uses project references (`tsconfig.app.json`, `tsconfig.node.json`). Build runs `tsc -b` (project-level typecheck).
 - The entire UI uses JetBrains Mono as the only font (`font-sans` = `font-mono` = JetBrains Mono in `index.css`). Dark theme only — `color-scheme: dark`.
 
@@ -71,7 +71,7 @@ Frontend env vars (Vite, prefix `VITE_`):
 
 - Python API handlers are plain `BaseHTTPRequestHandler` classes, not Flask/FastAPI.
 - Local dev spawns a fresh Python process per request through `api/_dev_handler.py`. The handler suppresses handler stdout to prevent debug prints from corrupting the wire protocol.
-- MemWal is always initialized with `env="prod"` in `common.get_memwal()`.
+- MemWal is now owned by the frontend. `handlers/memory.py` and backend MemWal writes in `handlers/agent.py` have been removed; the frontend generates per-wallet delegate keys and reads/writes memories directly.
 - Many handlers call `asyncio.run(...)` inside synchronous `do_POST`/`do_GET` methods.
 
 ## Deployment
