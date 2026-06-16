@@ -35,7 +35,7 @@ cd frontend && npm run lint
 - `shared/types.ts` — shared TypeScript types.
 - `supabase/schema.sql` — database schema. Run this in the Supabase SQL Editor before using the app.
 - `dev.mjs` + `api/_dev_handler.py` — local dev harness that proxies `/api/*` directly to the individual handler modules.
-- `vercel.json` — Vercel routing and the hourly `/api/resolve` cron.
+- `vercel.json` — Vercel configuration: custom Vite build from `frontend/`, `rewrites` for the SPA and API, `functions` config for the single Python function, and the hourly `/api/resolve` cron.
 
 ## Environment variables
 
@@ -80,7 +80,7 @@ Frontend env vars (Vite, prefix `VITE_`):
 vercel --prod
 ```
 
-Vercel routing: `/api/(.*)` → `/api/index.py` (single function that dispatches to the handler modules), static files with extensions → served from the deployment root, all other paths → `index.html` for the React SPA. The hourly match-resolution cron hits `/api/resolve`.
+Vercel routing: `/api/(.*)` → `/api/index.py` (single function that dispatches to the handler modules), all other paths → `index.html` for the React SPA. Vercel serves static files from `frontend/dist` automatically before applying rewrites. The hourly match-resolution cron hits `/api/resolve`.
 
 ## Validation
 
