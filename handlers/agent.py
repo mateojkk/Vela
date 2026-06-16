@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler
 
 from memwal import RecallParams
 from lib.common import get_supabase, get_groq, get_memwal, send_json, require_auth_email, read_json_body, options
-from lib.handlers.chat import auto_title
+from handlers.chat import auto_title
 from lib.polymarket import fetch_wc_events, group_events_by_match
 
 SYSTEM_PROMPT = """You are Vela — a football-obsessed AI rival who never forgets. You track every prediction, remember every take, and hold grudges.

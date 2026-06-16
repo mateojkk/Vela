@@ -14,6 +14,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PORT = parseInt(process.env.PORT || "3000");
+const HANDLERS_DIR = resolvePath(__dirname, "handlers");
 const API_DIR = resolvePath(__dirname, "api");
 const FRONTEND_DIR = resolvePath(__dirname, "frontend");
 const VITE_PORT = 5173;
@@ -71,7 +72,7 @@ function callPython(scriptPath, method, body, query, headers = {}) {
     ];
 
     const proc = spawn(PYTHON, args, {
-      cwd: API_DIR,
+      cwd: __dirname,
       env,
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -139,7 +140,7 @@ const server = createServer(async (req, res) => {
   // API routes
   if (pathname.startsWith("/api/")) {
     const scriptName = pathname.slice(5).replace(/\.py$/, "").replace(/\//g, "");
-    const scriptPath = resolvePath(API_DIR, "lib", "handlers", `${scriptName}.py`);
+    const scriptPath = resolvePath(HANDLERS_DIR, `${scriptName}.py`);
 
     if (!existsSync(scriptPath)) {
       res.writeHead(404, { "Content-Type": "application/json" });

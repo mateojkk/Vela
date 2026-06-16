@@ -17,25 +17,26 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse
 
-# Ensure api/ is on sys.path so handlers can do `from lib.common import ...`
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Ensure project root is on sys.path so we can import handlers/ and lib/.
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
 # Static imports guarantee Vercel bundles every handler file into this function.
-from lib.handlers import agent
-from lib.handlers import brief
-from lib.handlers import called_it
-from lib.handlers import chat
-from lib.handlers import fixtures
-from lib.handlers import health
-from lib.handlers import leaderboard
-from lib.handlers import markets
-from lib.handlers import memory
-from lib.handlers import og
-from lib.handlers import predict
-from lib.handlers import profile
-from lib.handlers import react
-from lib.handlers import reset
-from lib.handlers import resolve
+from handlers import agent
+from handlers import brief
+from handlers import called_it
+from handlers import chat
+from handlers import fixtures
+from handlers import health
+from handlers import leaderboard
+from handlers import markets
+from handlers import memory
+from handlers import og
+from handlers import predict
+from handlers import profile
+from handlers import react
+from handlers import reset
+from handlers import resolve
 
 
 HANDLERS = {

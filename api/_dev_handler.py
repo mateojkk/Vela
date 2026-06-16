@@ -15,10 +15,11 @@ import importlib.util
 from io import BytesIO
 from http.server import BaseHTTPRequestHandler
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
 # Load .env from project root
-_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_project_root = project_root
 _env_path = os.path.join(_project_root, ".env")
 if os.path.exists(_env_path):
     with open(_env_path) as _f:
@@ -89,7 +90,7 @@ def main():
 
     # Load the API module
     script_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "lib", "handlers", f"{script_name}.py"
+        project_root, "handlers", f"{script_name}.py"
     )
     if not os.path.exists(script_path):
         result = {"status": 404, "headers": {"Content-Type": "application/json"}}
