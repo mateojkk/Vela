@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../hooks/useAuth";
 import { apiGet } from "../lib/api";
@@ -7,15 +6,6 @@ import type { MarketGroup } from "../../../shared/types";
 import Layout from "../components/Layout";
 import MarketCard from "../components/MarketCard";
 import PredictionModal from "../components/PredictionModal";
-
-interface BriefData {
-  date: string;
-  matches: Array<{ id: string; home: string; away: string; kickoff: string; status: string }>;
-  vela_takes: Array<{ match: string; take: string }>;
-  total_predictions: number;
-  accuracy: number;
-  rank: number;
-}
 
 interface MatchFixture {
   id: string;
@@ -61,20 +51,6 @@ export default function Feed() {
     queryKey: ["markets"],
     queryFn: () => apiGet("/markets"),
   });
-
-  const [brief, setBrief] = useState<BriefData | null>(null);
-  useEffect(() => {
-    if (!user?.email) return;
-    let cancelled = false;
-    apiGet<BriefData>(`/brief?email=${encodeURIComponent(user.email)}`)
-      .then((data) => {
-        if (!cancelled) setBrief(data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.email]);
 
   const filteredMarkets = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -122,68 +98,6 @@ export default function Feed() {
 
   return (
     <Layout showSearch searchValue={search} onSearchChange={setSearch}>
-      {/* Vela's Take */}
-      {brief && (brief.vela_takes.length > 0 || brief.matches.length > 0) && (
-        <section className="mb-8">
-          <div className="mb-3 flex items-center gap-2">
-            <img
-              src="/vela.jpg"
-              className="h-5 w-5 rounded-md object-cover"
-              alt="Vela"
-            />
-            <h2 className="text-xs font-bold uppercase tracking-widest text-primary">
-              Vela's Take
-            </h2>
-            <span className="text-xs text-muted-foreground">{brief.date}</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-          <div className="rounded-md border border-border bg-card p-5">
-            {brief.total_predictions > 0 && (
-              <div className="mb-3 flex items-center gap-2 text-xs">
-                <span className="rounded border border-border px-2 py-0.5 font-mono tabular-nums text-muted-foreground">
-                  {brief.accuracy}% acc
-                </span>
-                <span className="rounded border border-border px-2 py-0.5 font-mono tabular-nums text-muted-foreground">
-                  Rank #{brief.rank}
-                </span>
-                <span className="text-muted-foreground">
-                  · {brief.total_predictions} predictions
-                </span>
-              </div>
-            )}
-            {brief.vela_takes.length > 0 ? (
-              <div className="space-y-2">
-                {brief.vela_takes.slice(0, 3).map((t, i) => (
-                  <div key={i} className="flex gap-2 text-sm">
-                    <span className="shrink-0 text-primary">"</span>
-                    <p className="italic leading-relaxed text-foreground">{t.take}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {brief.matches.length} matches today. Chat with Vela to get takes.
-              </p>
-            )}
-            <Link
-              to="/"
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:opacity-80"
-            >
-              Ask Vela for more
-              <svg
-                className="h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        </section>
-      )}
-
       {/* Trending Markets */}
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between">

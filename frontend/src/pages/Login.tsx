@@ -1,7 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { ConnectButton } from "@mysten/dapp-kit";
+
+function VelaLogo({ className }: { className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        className={`flex items-center justify-center rounded-md bg-gradient-to-br from-walrus-purple to-walrus-cyan font-bold text-walrus-deep ${className}`}
+      >
+        V
+      </div>
+    );
+  }
+  return (
+    <img
+      src="/vela.jpg"
+      className={className}
+      alt="Vela"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export default function Login() {
   const { user } = useAuth();
@@ -21,9 +42,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 font-mono">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-md bg-gradient-to-br from-walrus-purple to-walrus-cyan text-2xl">
-            🦭
-          </div>
+          <VelaLogo className="mx-auto mb-4 h-16 w-16 rounded-md object-cover" />
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground">vela</h1>
           <p className="text-sm text-muted-foreground">
             Your AI football rival for the 2026 World Cup. Powered by Walrus Memory on Sui.
