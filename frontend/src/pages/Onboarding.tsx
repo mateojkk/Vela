@@ -76,7 +76,12 @@ export default function Onboarding() {
         display_name: displayName.trim(),
         avatar_url: avatar || null,
       });
-      await refreshUser();
+      const refreshed = await refreshUser();
+      if (!refreshed.username) {
+        throw new Error(
+          "We saved your profile but couldn't reload it. Please try again."
+        );
+      }
       // If already authorized, go straight to chat.
       if (authorized) {
         navigate("/");
@@ -101,7 +106,12 @@ export default function Onboarding() {
     setError("");
     try {
       await authorize();
-      await refreshUser();
+      const refreshed = await refreshUser();
+      if (!refreshed.username) {
+        throw new Error(
+          "Authorization succeeded but we couldn't reload your profile. Please try again."
+        );
+      }
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authorization failed");

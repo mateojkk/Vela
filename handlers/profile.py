@@ -11,6 +11,30 @@ def _column_missing_error(exc: Exception, column: str) -> bool:
     return column in msg or "42703" in msg
 
 
+def _insert_user_robustly(supabase, user_row: dict) -> None:
+    """Insert a users row, dropping optional columns one-by-one if the live
+    DB hasn't been migrated yet."""
+    optional = ["display_name", "avatar_url", "memwal_account_id"]
+    attempt = dict(user_row)
+    attempts = 0
+    while attempts < 5:
+        attempts += 1
+        try:
+            supabase.table("users").insert(attempt).execute()
+            return
+        except Exception as exc:
+            msg = str(exc)
+            dropped = False
+            for col in list(optional):
+                if col in attempt and (col in msg or "42703" in msg):
+                    attempt.pop(col, None)
+                    optional.remove(col)
+                    dropped = True
+                    break
+            if not dropped:
+                raise
+
+
 def _sync_leaderboard(supabase, user: dict):
     """Keep the leaderboard row in sync with the users table's display fields.
     Gracefully no-ops if the leaderboard doesn't have those columns yet."""
@@ -331,24 +355,22 @@ class handler(BaseHTTPRequestHandler):
                 "avatar_url": avatar_url,
                 "memwal_account_id": memwal_account_id,
             }
+            _insert_user_robustly(supabase, user_row)
             try:
-                supabase.table("users").insert(user_row).execute()
+                supabase.table("leaderboard").insert({
+                    "user_id": user_id,
+                    "username": username,
+                    "display_name": display_name,
+                    "avatar_url": avatar_url,
+                    "accuracy_pct": 0,
+                    "total_predictions": 0,
+                    "correct": 0,
+                    "rank": 999,
+                }).execute()
             except Exception as exc:
-                if _column_missing_error(exc, "memwal_account_id"):
-                    user_row.pop("memwal_account_id", None)
-                    supabase.table("users").insert(user_row).execute()
-                else:
-                    raise
-            supabase.table("leaderboard").insert({
-                "user_id": user_id,
-                "username": username,
-                "display_name": display_name,
-                "avatar_url": avatar_url,
-                "accuracy_pct": 0,
-                "total_predictions": 0,
-                "correct": 0,
-                "rank": 999,
-            }).execute()
+                # Don't fail profile creation just because the leaderboard
+                # table isn't fully migrated yet.
+                print(f"[profile] Could not create leaderboard row: {exc}")
 
             send_json(self, 201, {"status": "created"})
 

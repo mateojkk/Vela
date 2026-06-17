@@ -22,7 +22,7 @@ interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   signOut: () => void;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser>;
   updateUser: (patch: Partial<AuthUser>) => void;
 }
 
@@ -68,15 +68,28 @@ async function loadProfile(
     );
     if (res.ok) {
       const data = await res.json();
-      const u = data.user;
+      const u = data?.user;
       const profile = {
         username: u?.username ?? undefined,
         display_name: u?.display_name ?? null,
         avatar_url: u?.avatar_url ?? null,
         memwal_account_id: u?.memwal_account_id ?? null,
       };
-      localStorage.setItem(profileKey(normalized), JSON.stringify(profile));
-      return profile;
+      if (profile.username) {
+        // Only cache complete profiles so a transient 200 with no user
+        // (e.g., row missing during a migration) doesn't wipe the cache.
+        localStorage.setItem(profileKey(normalized), JSON.stringify(profile));
+        return profile;
+      }
+      // Server reports no user. If we have a cached username, trust it for
+      // now so returning users aren't dumped back into onboarding.
+      if (initial?.username) {
+        console.warn(
+          `[auth] Server returned no profile for ${normalized}; using cached username ${initial.username}`
+        );
+        return initial;
+      }
+      return {};
     }
   } catch {
     // fall through to cached/empty profile
@@ -125,9 +138,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [disconnect]);
 
   const refreshUser = useCallback(async () => {
-    if (!address) return;
+    if (!address) throw new Error("No wallet connected");
     const profile = await loadProfile(address);
-    setEnrichedUser({ id: address, email: address, ...profile });
+    const updated = { id: address, email: address, ...profile };
+    setEnrichedUser(updated);
+    return updated;
   }, [address]);
 
   const updateUser = useCallback((patch: Partial<AuthUser>) => {
