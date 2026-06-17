@@ -4,6 +4,27 @@ import { useAuth } from "../hooks/useAuth";
 import { useMemWal } from "../hooks/useMemWal";
 import { apiPost, ApiError } from "../lib/api";
 
+function VelaLogo({ className }: { className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        className={`flex items-center justify-center rounded-md bg-gradient-to-br from-walrus-purple to-walrus-cyan font-bold text-walrus-deep ${className}`}
+      >
+        V
+      </div>
+    );
+  }
+  return (
+    <img
+      src="/vela.jpg"
+      className={className}
+      alt="Vela"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 const PRESET_AVATARS = [
   "⚽", "🏆", "🦅", "🐺", "🦁", "🐉",
   "🔥", "⚡", "💎", "🚀", "👑", "🌟",
@@ -91,11 +112,7 @@ export default function Onboarding() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8 font-mono">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <img
-            src="/vela.jpg"
-            className="mx-auto mb-4 h-16 w-16 rounded-md object-cover"
-            alt="Vela"
-          />
+          <VelaLogo className="mx-auto mb-4 h-16 w-16 rounded-md object-cover" />
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground">vela</h1>
           <p className="text-sm text-muted-foreground">
             {step === "profile" ? "Set up your profile. Vela will remember it." : "One last step: authorize your memory."}
@@ -228,7 +245,7 @@ export default function Onboarding() {
               <button
                 type="submit"
                 disabled={loading || !username || !displayName.trim()}
-                className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
+                className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-walrus-deep hover:bg-foreground/90 disabled:opacity-50"
               >
                 {loading ? "Setting up..." : "Continue"}
               </button>
@@ -252,13 +269,13 @@ export default function Onboarding() {
                 </p>
               )}
 
-              <button
-                onClick={handleAuthorize}
-                disabled={authChecking || memwalLoading}
-                className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
-              >
-                {authChecking || memwalLoading ? "Authorizing…" : "Authorize & Meet Vela"}
-              </button>
+          <button
+            onClick={handleAuthorize}
+            disabled={authChecking || memwalLoading}
+            className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-walrus-deep hover:bg-foreground/90 disabled:opacity-50"
+          >
+            {authChecking || memwalLoading ? "Authorizing…" : "Authorize & Meet Vela"}
+          </button>
             </div>
           )}
         </div>

@@ -134,8 +134,28 @@ export function useMemWal(): UseMemWalResult {
   }, [delegate, address]);
 
   const authorize = useCallback(async () => {
-    if (!address || !delegate || !ACCOUNT_ID || !PACKAGE_ID || !suiClient) {
-      setError("Wallet not connected or MemWal is not configured");
+    if (!address) {
+      setError("Wallet not connected");
+      return;
+    }
+    if (!delegate) {
+      setError("Delegate key not ready");
+      return;
+    }
+    if (!SERVER_URL) {
+      setError("VITE_MEMWAL_SERVER_URL is not set");
+      return;
+    }
+    if (!ACCOUNT_ID) {
+      setError("VITE_MEMWAL_ACCOUNT_ID is not set");
+      return;
+    }
+    if (!PACKAGE_ID) {
+      setError("VITE_MEMWAL_PACKAGE_ID is not set");
+      return;
+    }
+    if (!suiClient) {
+      setError("Sui client not ready");
       return;
     }
     setLoading(true);
