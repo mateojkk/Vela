@@ -2,7 +2,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, send_json, require_auth_email, read_json_body
+from lib.common import get_supabase, send_json, require_auth_email, read_json_body, normalize_address
 
 
 def _column_missing_error(exc: Exception, column: str) -> bool:
@@ -59,15 +59,19 @@ def _sync_leaderboard(supabase, user: dict):
 
 def _select_user(supabase, *, by_email: str | None = None, by_username: str | None = None) -> dict | None:
     """Fetch a user with display_name/avatar_url, falling back to a basic
-    select if the live DB hasn't been migrated yet."""
+    select if the live DB hasn't been migrated yet.
+
+    Email lookup is case-insensitive because Sui addresses are."""
     cols = "id, email, username, display_name, avatar_url, memwal_account_id, created_at"
     fallback_cols = "id, email, username, created_at"
+    email = normalize_address(by_email)
+    username = by_username.strip().lower() if by_username else None
     try:
         q = supabase.table("users").select(cols)
-        if by_email is not None:
-            q = q.eq("email", by_email)
-        if by_username is not None:
-            q = q.eq("username", by_username)
+        if email is not None:
+            q = q.ilike("email", email)
+        if username is not None:
+            q = q.ilike("username", username)
         result = q.limit(1).execute()
         if result.data:
             return result.data[0]
@@ -76,10 +80,10 @@ def _select_user(supabase, *, by_email: str | None = None, by_username: str | No
         if any(col in msg for col in ("display_name", "avatar_url", "memwal_account_id")) or "42703" in msg:
             try:
                 q = supabase.table("users").select(fallback_cols)
-                if by_email is not None:
-                    q = q.eq("email", by_email)
-                if by_username is not None:
-                    q = q.eq("username", by_username)
+                if email is not None:
+                    q = q.ilike("email", email)
+                if username is not None:
+                    q = q.ilike("username", username)
                 result = q.limit(1).execute()
                 if result.data:
                     row = result.data[0]
@@ -283,8 +287,8 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "Invalid JSON body"})
             return
 
-        email = body.get("email", "").strip()
-        username = body.get("username", "").strip()
+        email = normalize_address(body.get("email"))
+        username = (body.get("username") or "").strip().lower()
         display_name = (body.get("display_name") or "").strip() or None
         avatar_url = (body.get("avatar_url") or "").strip() or None
         memwal_account_id = (body.get("memwal_account_id") or "").strip() or None
@@ -315,7 +319,12 @@ class handler(BaseHTTPRequestHandler):
         supabase = get_supabase()
 
         try:
-            taken = supabase.table("users").select("id").eq("username", username).execute()
+            taken = (
+                supabase.table("users")
+                .select("id, username")
+                .ilike("username", username)
+                .execute()
+            )
             existing = _select_user(supabase, by_email=email)
 
             if existing:
@@ -330,12 +339,12 @@ class handler(BaseHTTPRequestHandler):
                 if memwal_account_id is not None:
                     update["memwal_account_id"] = memwal_account_id
                 try:
-                    supabase.table("users").update(update).eq("email", email).execute()
+                    supabase.table("users").update(update).eq("id", existing["id"]).execute()
                 except Exception as exc:
                     if _column_missing_error(exc, "memwal_account_id") and "memwal_account_id" in update:
                         update.pop("memwal_account_id")
                         if update:
-                            supabase.table("users").update(update).eq("email", email).execute()
+                            supabase.table("users").update(update).eq("id", existing["id"]).execute()
                     else:
                         raise
                 _sync_leaderboard(supabase, {**existing, **update})
@@ -383,7 +392,7 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "Invalid JSON body"})
             return
 
-        email = body.get("email", "").strip()
+        email = normalize_address(body.get("email"))
         if not email:
             send_json(self, 400, {"error": "Missing email"})
             return
@@ -426,15 +435,20 @@ class handler(BaseHTTPRequestHandler):
 
         supabase = get_supabase()
         try:
+            existing = _select_user(supabase, by_email=email)
+            if not existing:
+                send_json(self, 404, {"error": "User not found"})
+                return
+
             try:
-                result = supabase.table("users").update(updates).eq("email", email).execute()
+                result = supabase.table("users").update(updates).eq("id", existing["id"]).execute()
             except Exception as exc:
                 if _column_missing_error(exc, "memwal_account_id") and "memwal_account_id" in updates:
                     updates.pop("memwal_account_id")
                     if not updates:
                         send_json(self, 400, {"error": "No fields to update"})
                         return
-                    result = supabase.table("users").update(updates).eq("email", email).execute()
+                    result = supabase.table("users").update(updates).eq("id", existing["id"]).execute()
                 else:
                     raise
             if not result.data:

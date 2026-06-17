@@ -8,6 +8,11 @@ import React, {
 } from "react";
 import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit";
 import { setCurrentWalletAddress } from "../lib/api";
+import {
+  normalizeAddress,
+  loadCachedProfile,
+  saveCachedProfile,
+} from "../lib/profileCache";
 
 export interface AuthUser {
   id: string; // Sui address
@@ -28,16 +33,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function normalizeAddress(address: string | undefined): string | null {
-  if (!address) return null;
-  const lower = address.toLowerCase().trim();
-  return lower.startsWith("0x") ? lower : `0x${lower}`;
-}
-
-function profileKey(address: string) {
-  return `vela_profile_${address}`;
-}
-
 async function loadProfile(
   address: string
 ): Promise<Omit<AuthUser, "id" | "email">> {
@@ -46,15 +41,7 @@ async function loadProfile(
 
   // Use a cached profile while the network request is in flight so reconnects
   // feel instant and survive short-lived network issues.
-  const cached = localStorage.getItem(profileKey(normalized));
-  let initial: Omit<AuthUser, "id" | "email"> | null = null;
-  if (cached) {
-    try {
-      initial = JSON.parse(cached);
-    } catch {
-      // ignore corrupt cache
-    }
-  }
+  const initial = loadCachedProfile(normalized);
 
   try {
     const res = await fetch(
@@ -78,7 +65,7 @@ async function loadProfile(
       if (profile.username) {
         // Only cache complete profiles so a transient 200 with no user
         // (e.g., row missing during a migration) doesn't wipe the cache.
-        localStorage.setItem(profileKey(normalized), JSON.stringify(profile));
+        saveCachedProfile(normalized, profile);
         return profile;
       }
       // Server reports no user. If we have a cached username, trust it for

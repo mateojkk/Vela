@@ -8,14 +8,14 @@ can show a "how did you do?" panel with Vela's commentary.
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, get_groq, send_json, require_auth_email
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, normalize_address
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
-        user_email = params.get("email", [None])[0]
+        user_email = normalize_address(params.get("email", [None])[0])
 
         if not user_email:
             send_json(self, 400, {"error": "email required"})
@@ -28,7 +28,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             supabase = get_supabase()
             user_result = (
-                supabase.table("users").select("id, username").eq("email", user_email).execute()
+                supabase.table("users").select("id, username").ilike("email", user_email).execute()
             )
             user = user_result.data[0] if user_result.data else None
             if not user:

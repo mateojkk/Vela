@@ -1,7 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, send_json, require_auth_email, options
+from lib.common import get_supabase, send_json, require_auth_email, options, normalize_address
 
 
 class handler(BaseHTTPRequestHandler):
@@ -11,7 +11,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
-        user_email = params.get("email", [None])[0]
+        user_email = normalize_address(params.get("email", [None])[0])
         pred_id = params.get("pred_id", [None])[0]
 
         if not user_email:
@@ -25,7 +25,12 @@ class handler(BaseHTTPRequestHandler):
         supabase = get_supabase()
 
         try:
-            user_result = supabase.table("users").select("id, username").eq("email", user_email).execute()
+            user_result = (
+                supabase.table("users")
+                .select("id, username")
+                .ilike("email", user_email)
+                .execute()
+            )
             if not user_result.data:
                 send_json(self, 404, {"error": "User not found"})
                 return

@@ -17,11 +17,16 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, send_json, read_json_body, get_auth_email, options
+from lib.common import get_supabase, send_json, read_json_body, get_auth_email, options, normalize_address
 
 
 def _user_id(supabase, email: str) -> str | None:
-    r = supabase.table("users").select("id").eq("email", email).execute()
+    r = (
+        supabase.table("users")
+        .select("id")
+        .ilike("email", normalize_address(email) or email)
+        .execute()
+    )
     return r.data[0]["id"] if r.data else None
 
 

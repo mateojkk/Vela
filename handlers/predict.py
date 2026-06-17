@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
-from lib.common import get_supabase, send_json, require_auth_email, read_json_body
+from lib.common import get_supabase, send_json, require_auth_email, read_json_body, normalize_address
 
 
 class handler(BaseHTTPRequestHandler):
@@ -12,7 +12,7 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "Invalid JSON body"})
             return
 
-        user_email = body.get("user_email", "").strip()
+        user_email = normalize_address(body.get("user_email"))
         prediction_type = body.get("type", "match")
         external_id = body.get("external_id", "")
         user_pick = body.get("user_pick", "").strip()
@@ -33,7 +33,12 @@ class handler(BaseHTTPRequestHandler):
         supabase = get_supabase()
 
         try:
-            user_result = supabase.table("users").select("id").eq("email", user_email).execute()
+            user_result = (
+                supabase.table("users")
+                .select("id")
+                .ilike("email", user_email or "")
+                .execute()
+            )
             if not user_result.data:
                 send_json(self, 404, {"error": "User not found"})
                 return

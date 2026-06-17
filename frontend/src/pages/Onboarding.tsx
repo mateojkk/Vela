@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useMemWal } from "../hooks/useMemWal";
 import { apiPost, ApiError } from "../lib/api";
+import { normalizeAddress, profileKey } from "../lib/profileCache";
 
 function VelaLogo({ className }: { className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -76,6 +77,22 @@ export default function Onboarding() {
         display_name: displayName.trim(),
         avatar_url: avatar || null,
       });
+
+      // Cache the profile immediately so reconnects survive even if the next
+      // GET lookup temporarily fails.
+      const address = normalizeAddress(user?.email);
+      if (address) {
+        localStorage.setItem(
+          profileKey(address),
+          JSON.stringify({
+            username,
+            display_name: displayName.trim(),
+            avatar_url: avatar || null,
+            memwal_account_id: null,
+          })
+        );
+      }
+
       const refreshed = await refreshUser();
       if (!refreshed.username) {
         throw new Error(

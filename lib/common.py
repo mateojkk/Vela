@@ -57,10 +57,23 @@ def read_json_body(handler: BaseHTTPRequestHandler) -> dict | None:
         return None
 
 
+def normalize_address(value: str | None) -> str | None:
+    """Normalize a Sui wallet address / legacy email identifier.
+
+    Sui addresses are case-insensitive, but Postgres `text` comparisons are not.
+    We lowercase and strip so lookups work regardless of how the wallet casing
+    was stored originally.
+    """
+    if not value:
+        return None
+    cleaned = str(value).strip().lower()
+    return cleaned or None
+
+
 def get_auth_email(handler: BaseHTTPRequestHandler) -> str | None:
     raw = handler.headers.get("X-User-Email", "")
     if isinstance(raw, str):
-        return raw.strip() or None
+        return normalize_address(raw)
     return None
 
 
@@ -76,7 +89,7 @@ def require_auth_email(
     if not email:
         send_json(handler, 401, {"error": "Unauthorized"})
         return None
-    if claimed_email is not None and email != claimed_email.strip():
+    if claimed_email is not None and email != normalize_address(claimed_email):
         send_json(handler, 403, {"error": "Email mismatch"})
         return None
     return email

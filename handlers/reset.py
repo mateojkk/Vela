@@ -15,6 +15,7 @@ from lib.common import (
     require_auth_email,
     read_json_body,
     options,
+    normalize_address,
 )
 
 
@@ -28,7 +29,7 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "Invalid JSON body"})
             return
 
-        email = (body.get("email") or "").strip()
+        email = normalize_address(body.get("email"))
         if not email:
             send_json(self, 400, {"error": "Missing email"})
             return
@@ -43,7 +44,12 @@ class handler(BaseHTTPRequestHandler):
 
         supabase = get_supabase()
         try:
-            user_result = supabase.table("users").select("id, username").eq("email", email).execute()
+            user_result = (
+                supabase.table("users")
+                .select("id, username")
+                .ilike("email", email)
+                .execute()
+            )
             if not user_result.data:
                 send_json(self, 404, {"error": "User not found"})
                 return

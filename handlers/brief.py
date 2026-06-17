@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, get_groq, send_json, require_auth_email, options
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, options, normalize_address
 from lib.polymarket import fetch_wc_events, group_events_by_match
 
 
@@ -72,7 +72,12 @@ async def _build_brief(user_email: str):
             "status": m.get("status", ""),
         })
 
-    user_result = supabase.table("users").select("id").eq("email", user_email).execute()
+    user_result = (
+        supabase.table("users")
+        .select("id")
+        .ilike("email", normalize_address(user_email) or user_email)
+        .execute()
+    )
     if user_result.data:
         user_id = user_result.data[0]["id"]
         lb = supabase.table("leaderboard").select("*").eq("user_id", user_id).execute()
@@ -125,7 +130,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
-        user_email = params.get("email", [None])[0]
+        user_email = normalize_address(params.get("email", [None])[0])
 
         if not user_email:
             send_json(self, 400, {"error": "email required"})

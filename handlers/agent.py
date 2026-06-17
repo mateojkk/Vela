@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
-from lib.common import get_supabase, get_groq, send_json, require_auth_email, read_json_body, options
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, read_json_body, options, normalize_address
 from handlers.chat import auto_title
 from lib.polymarket import fetch_wc_events, group_events_by_match
 
@@ -72,11 +72,12 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
 
     # Try rich user select first; fall back if display_name/avatar_url
     # columns don't exist yet.
+    email = normalize_address(user_email) or user_email
     try:
         user_result = (
             supabase.table("users")
             .select("id, username, display_name, avatar_url")
-            .eq("email", user_email)
+            .ilike("email", email)
             .execute()
         )
         user = user_result.data[0] if user_result.data else None
@@ -86,7 +87,7 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
             user_result = (
                 supabase.table("users")
                 .select("id, username")
-                .eq("email", user_email)
+                .ilike("email", email)
                 .execute()
             )
             user = user_result.data[0] if user_result.data else None
@@ -222,7 +223,7 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
 
 
 def _user_id_for(supabase, email: str) -> str | None:
-    r = supabase.table("users").select("id").eq("email", email).execute()
+    r = supabase.table("users").select("id").ilike("email", normalize_address(email) or email).execute()
     return r.data[0]["id"] if r.data else None
 
 
@@ -257,7 +258,7 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "Invalid JSON body"})
             return
 
-        user_email = (body.get("user_email") or "").strip()
+        user_email = normalize_address(body.get("user_email"))
         message = (body.get("message") or "").strip()
         session_id = body.get("session_id") or ""
         session_id = session_id.strip() if isinstance(session_id, str) else None
