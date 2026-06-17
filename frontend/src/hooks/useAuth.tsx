@@ -15,6 +15,7 @@ export interface AuthUser {
   username?: string;
   display_name?: string | null;
   avatar_url?: string | null;
+  memwal_account_id?: string | null;
 }
 
 interface AuthContextType {
@@ -47,6 +48,7 @@ async function loadProfile(
         username: u?.username ?? undefined,
         display_name: u?.display_name ?? null,
         avatar_url: u?.avatar_url ?? null,
+        memwal_account_id: u?.memwal_account_id ?? null,
       };
     }
   } catch {

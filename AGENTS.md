@@ -42,14 +42,16 @@ cd frontend && npm run lint
 Copy `.env.example` to `.env` at repo root. **Two independent parsers** load `.env`: `dev.mjs` (Node, no quote stripping) and `api/_dev_handler.py` (Python, strips quotes). Neither uses `python-dotenv`.
 
 Required backend keys:
-- `MEMWAL_ACCOUNT_ID`, `MEMWAL_SERVER_URL` — shared Walrus Memory account (project-funded storage). The backend no longer writes to MemWal; the frontend does.
 - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` — Python backend uses the service key; RLS is enabled but bypassed by service-key access.
 - `GROQ_API_KEY` — LLM.
+- `MEMWAL_SERVER_URL` — optional, only if any legacy code still references the relayer from the backend.
 
 Frontend env vars (Vite, prefix `VITE_`):
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - `VITE_SUI_NETWORK` — defaults to `mainnet` if unset.
-- `VITE_MEMWAL_SERVER_URL`, `VITE_MEMWAL_ACCOUNT_ID`, `VITE_MEMWAL_PACKAGE_ID` — Walrus Memory frontend client and on-chain delegate-key authorization.
+- `VITE_MEMWAL_SERVER_URL`, `VITE_MEMWAL_PACKAGE_ID`, `VITE_MEMWAL_REGISTRY_ID` — Walrus Memory frontend client and on-chain account creation/delegate-key authorization.
+
+MemWal account model: each connected wallet owns its own `MemWalAccount` on-chain. Vela creates the account if it does not exist, then adds a per-device delegate key. There is no shared project account; storage is paid by the managed relayer's server wallet, while the user pays gas for account creation and delegate-key authorization.
 
 `FOOTBALL_DATA_API_KEY` appears in `.env.example` but is unused by any handler.
 
@@ -71,7 +73,7 @@ Frontend env vars (Vite, prefix `VITE_`):
 
 - Python API handlers are plain `BaseHTTPRequestHandler` classes, not Flask/FastAPI.
 - Local dev spawns a fresh Python process per request through `api/_dev_handler.py`. The handler suppresses handler stdout to prevent debug prints from corrupting the wire protocol.
-- MemWal is now owned by the frontend. `handlers/memory.py` and backend MemWal writes in `handlers/agent.py` have been removed; the frontend generates per-wallet delegate keys and reads/writes memories directly. Onboarding ends with a required wallet-signed `addDelegateKey` step; Chat and Memory Map block until authorization succeeds.
+- MemWal is now owned by the frontend. `handlers/memory.py` and backend MemWal writes in `handlers/agent.py` have been removed; the frontend creates a per-wallet `MemWalAccount` (if needed), adds a per-device delegate key, and reads/writes memories directly. Onboarding ends with required wallet-signed account creation and `addDelegateKey` steps; Chat and Memory Map block until authorization succeeds.
 - Many handlers call `asyncio.run(...)` inside synchronous `do_POST`/`do_GET` methods.
 
 ## Deployment

@@ -30,7 +30,7 @@ def _sync_leaderboard(supabase, user: dict):
 def _select_user(supabase, *, by_email: str | None = None, by_username: str | None = None) -> dict | None:
     """Fetch a user with display_name/avatar_url, falling back to a basic
     select if the live DB hasn't been migrated yet."""
-    cols = "id, email, username, display_name, avatar_url, created_at"
+    cols = "id, email, username, display_name, avatar_url, memwal_account_id, created_at"
     fallback_cols = "id, email, username, created_at"
     try:
         q = supabase.table("users").select(cols)
@@ -43,7 +43,7 @@ def _select_user(supabase, *, by_email: str | None = None, by_username: str | No
             return result.data[0]
     except Exception as e:
         msg = str(e)
-        if "display_name" in msg or "avatar_url" in msg or "42703" in msg:
+        if any(col in msg for col in ("display_name", "avatar_url", "memwal_account_id")) or "42703" in msg:
             try:
                 q = supabase.table("users").select(fallback_cols)
                 if by_email is not None:
@@ -55,6 +55,7 @@ def _select_user(supabase, *, by_email: str | None = None, by_username: str | No
                     row = result.data[0]
                     row.setdefault("display_name", None)
                     row.setdefault("avatar_url", None)
+                    row.setdefault("memwal_account_id", None)
                     return row
             except Exception:
                 return None
@@ -256,6 +257,7 @@ class handler(BaseHTTPRequestHandler):
         username = body.get("username", "").strip()
         display_name = (body.get("display_name") or "").strip() or None
         avatar_url = (body.get("avatar_url") or "").strip() or None
+        memwal_account_id = (body.get("memwal_account_id") or "").strip() or None
 
         if display_name and len(display_name) > 40:
             send_json(self, 400, {"error": "Display name too long (max 40)"})
@@ -267,6 +269,9 @@ class handler(BaseHTTPRequestHandler):
             or avatar_url.startswith("emoji:")
         ):
             send_json(self, 400, {"error": "Avatar must be a URL, data:image, or emoji:"})
+            return
+        if memwal_account_id and not memwal_account_id.startswith("0x"):
+            send_json(self, 400, {"error": "Invalid MemWal account ID"})
             return
 
         verified = require_auth_email(self, email)
@@ -292,6 +297,8 @@ class handler(BaseHTTPRequestHandler):
                     update["display_name"] = display_name
                 if avatar_url is not None:
                     update["avatar_url"] = avatar_url
+                if memwal_account_id is not None:
+                    update["memwal_account_id"] = memwal_account_id
                 supabase.table("users").update(update).eq("email", email).execute()
                 _sync_leaderboard(supabase, {**existing.data[0], **update})
                 send_json(self, 200, {"status": "updated"})
@@ -308,6 +315,7 @@ class handler(BaseHTTPRequestHandler):
                 "username": username,
                 "display_name": display_name,
                 "avatar_url": avatar_url,
+                "memwal_account_id": memwal_account_id,
             }
             supabase.table("users").insert(user_row).execute()
             supabase.table("leaderboard").insert({
@@ -362,6 +370,12 @@ class handler(BaseHTTPRequestHandler):
                 send_json(self, 400, {"error": "Avatar too large"})
                 return
             updates["avatar_url"] = au or None
+        if "memwal_account_id" in body:
+            mw = (body.get("memwal_account_id") or "").strip()
+            if mw and not mw.startswith("0x"):
+                send_json(self, 400, {"error": "Invalid MemWal account ID"})
+                return
+            updates["memwal_account_id"] = mw or None
 
         if not updates:
             send_json(self, 400, {"error": "No fields to update"})

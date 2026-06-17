@@ -6,6 +6,7 @@ create table if not exists users (
   username    text unique not null,
   display_name text,
   avatar_url  text,
+  memwal_account_id text,
   created_at  timestamptz not null default now()
 );
 

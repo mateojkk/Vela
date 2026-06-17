@@ -43,7 +43,13 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(false);
   const { user, refreshUser } = useAuth();
-  const { authorized, loading: memwalLoading, error: memwalError, authorize } = useMemWal();
+  const {
+    authorized,
+    loading: memwalLoading,
+    status: memwalStatus,
+    error: memwalError,
+    authorize,
+  } = useMemWal();
   const navigate = useNavigate();
 
   async function handleProfileSubmit(e: React.FormEvent) {
@@ -95,6 +101,7 @@ export default function Onboarding() {
     setError("");
     try {
       await authorize();
+      await refreshUser();
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authorization failed");
@@ -259,9 +266,15 @@ export default function Onboarding() {
                 Authorize Walrus Memory
               </h2>
               <p className="text-sm text-muted-foreground">
-                Vela stores your takes, predictions, and roast material on Walrus Mainnet.
-                Authorize a one-time delegate key so I can remember you. You&apos;ll pay a small gas fee.
+                Vela stores your takes, predictions, and roast material in your own Walrus Memory account on Mainnet.
+                If you don&apos;t have one yet, Vela will create it, then authorize this device. You&apos;ll pay gas for the on-chain transactions.
               </p>
+
+              {memwalStatus && (
+                <p className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-primary">
+                  {memwalStatus}
+                </p>
+              )}
 
               {(error || memwalError) && (
                 <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -269,13 +282,13 @@ export default function Onboarding() {
                 </p>
               )}
 
-          <button
-            onClick={handleAuthorize}
-            disabled={authChecking || memwalLoading}
-            className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-walrus-deep hover:bg-foreground/90 disabled:opacity-50"
-          >
-            {authChecking || memwalLoading ? "Authorizing…" : "Authorize & Meet Vela"}
-          </button>
+              <button
+                onClick={handleAuthorize}
+                disabled={authChecking || memwalLoading}
+                className="w-full rounded-md border border-muted-foreground/40 bg-foreground py-3 font-semibold text-walrus-deep hover:bg-foreground/90 disabled:opacity-50"
+              >
+                {authChecking || memwalLoading ? "Authorizing…" : "Authorize & Meet Vela"}
+              </button>
             </div>
           )}
         </div>
