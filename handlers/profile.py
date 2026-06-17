@@ -265,8 +265,8 @@ class handler(BaseHTTPRequestHandler):
         avatar_url = (body.get("avatar_url") or "").strip() or None
         memwal_account_id = (body.get("memwal_account_id") or "").strip() or None
 
-        if display_name and len(display_name) > 40:
-            send_json(self, 400, {"error": "Display name too long (max 40)"})
+        if display_name and len(display_name) > 8:
+            send_json(self, 400, {"error": "Display name too long (max 8)"})
             return
         if avatar_url and not (
             avatar_url.startswith("http://")
@@ -292,10 +292,10 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             taken = supabase.table("users").select("id").eq("username", username).execute()
-            existing = supabase.table("users").select("*").eq("email", email).execute()
+            existing = _select_user(supabase, by_email=email)
 
-            if existing.data:
-                if taken.data and taken.data[0]["id"] != existing.data[0]["id"]:
+            if existing:
+                if taken.data and taken.data[0]["id"] != existing["id"]:
                     send_json(self, 409, {"error": "Username already taken"})
                     return
                 update = {"username": username}
@@ -314,7 +314,7 @@ class handler(BaseHTTPRequestHandler):
                             supabase.table("users").update(update).eq("email", email).execute()
                     else:
                         raise
-                _sync_leaderboard(supabase, {**existing.data[0], **update})
+                _sync_leaderboard(supabase, {**existing, **update})
                 send_json(self, 200, {"status": "updated"})
                 return
 
@@ -373,8 +373,8 @@ class handler(BaseHTTPRequestHandler):
         updates: dict = {}
         if "display_name" in body:
             dn = (body.get("display_name") or "").strip()
-            if len(dn) > 40:
-                send_json(self, 400, {"error": "Display name too long (max 40)"})
+            if len(dn) > 8:
+                send_json(self, 400, {"error": "Display name too long (max 8)"})
                 return
             updates["display_name"] = dn or None
         if "avatar_url" in body:

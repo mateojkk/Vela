@@ -2,8 +2,14 @@ const API_BASE = "/api";
 
 let currentWalletAddress: string | null = null;
 
+function normalizeAddress(address: string | null): string | null {
+  if (!address) return null;
+  const lower = address.toLowerCase().trim();
+  return lower.startsWith("0x") ? lower : `0x${lower}`;
+}
+
 export function setCurrentWalletAddress(address: string | null) {
-  currentWalletAddress = address;
+  currentWalletAddress = normalizeAddress(address);
 }
 
 function getAuthHeaders(): Record<string, string> {

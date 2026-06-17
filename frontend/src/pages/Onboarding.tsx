@@ -62,8 +62,8 @@ export default function Onboarding() {
       setError("Only letters, numbers, and underscores");
       return;
     }
-    if (!displayName.trim() || displayName.trim().length > 40) {
-      setError("Display name is required (max 40 characters)");
+    if (!displayName.trim() || displayName.trim().length > 8) {
+      setError("Display name is required (max 8 characters)");
       return;
     }
 
@@ -111,18 +111,18 @@ export default function Onboarding() {
   }
 
   const suggestedNames = [
-    `The ${pickRandom(["Goat", "Gaffer", "Skipper", "Number 9"])}`,
-    `${username || "Boss"} of the Touchline`,
+    pickRandom(["Gaffer", "Skipper", "Striker", "Captain"]),
+    username ? `${username.slice(0, 4)} FC` : "Boss FC",
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8 font-mono">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <VelaLogo className="mx-auto mb-4 h-16 w-16 rounded-md object-cover" />
-          <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground">vela</h1>
-          <p className="text-sm text-muted-foreground">
-            {step === "profile" ? "Set up your profile. Vela will remember it." : "One last step: authorize your memory."}
+          <h1 className="mb-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">vela</h1>
+          <p className="text-xs text-muted-foreground">
+            {step === "profile" ? "Set up your profile" : "Authorize memory"}
           </p>
         </div>
 
@@ -204,7 +204,7 @@ export default function Onboarding() {
                   />
                 </div>
                 <p className="mt-1 text-[10px] text-muted-foreground">
-                  3-20 characters. Letters, numbers, and underscores only. Used in your profile URL.
+                  3-20 chars, a-z 0-9 _
                 </p>
               </div>
 
@@ -223,10 +223,13 @@ export default function Onboarding() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Vela will call you this"
-                  maxLength={40}
+                  maxLength={8}
                   required
                   className="h-11 w-full rounded-md border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
                 />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Max 8 characters. Short and punchy.
+                </p>
                 {username && (
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {suggestedNames.map((s) => (

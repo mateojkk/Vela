@@ -106,9 +106,9 @@ export default function BottomNav({ username }: BottomNavProps) {
   // Hide on /login and /onboarding — no nav needed there.
   if (location.pathname === "/login" || location.pathname === "/onboarding") return null;
 
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur md:hidden">
-      <div className="mx-auto flex max-w-2xl items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
+    return (
+    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+      <div className="mx-auto flex max-w-2xl items-stretch justify-around px-1">
         {items.map((item) => {
           const active = item.match(location.pathname);
           const href =
@@ -119,10 +119,14 @@ export default function BottomNav({ username }: BottomNavProps) {
             <Link
               key={item.href}
               to={href}
-              className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium"
+              className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 active:scale-95"
             >
               {item.icon(active)}
-              <span className={active ? "text-primary" : "text-muted-foreground"}>
+              <span
+                className={`text-[9px] font-medium ${
+                  active ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
                 {item.label}
               </span>
             </Link>

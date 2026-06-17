@@ -99,41 +99,27 @@ export default function Feed() {
   return (
     <Layout showSearch searchValue={search} onSearchChange={setSearch}>
       {/* Trending Markets */}
-      <section className="mb-8">
+      <section className="mb-6 md:mb-8">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Trending Markets
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Trending
           </h2>
-          <span className="text-xs text-muted-foreground">
-            {markets.length > 0 ? (
-              <>
-                View all{" "}
-                <span className="tabular-nums text-foreground">
-                  {markets.length}
-                </span>
-              </>
-            ) : (
-              "View all"
-            )}
+          <span className="text-[10px] text-muted-foreground">
+            {markets.length} markets
           </span>
         </div>
 
         {filteredMarkets.length === 0 && markets.length === 0 ? (
-          <div className="rounded-md border border-border bg-card p-10 text-center">
+          <div className="rounded-md border border-border bg-card p-8 text-center">
             <div className="mb-2 text-3xl">⚽</div>
-            <h3 className="mb-1 text-sm font-semibold text-foreground">
-              No markets yet
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              World Cup prediction markets will appear here when available.
-            </p>
+            <h3 className="text-sm font-semibold text-foreground">No markets</h3>
           </div>
         ) : filteredMarkets.length === 0 ? (
-          <div className="rounded-md border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            No markets match "{search}".
+          <div className="rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            No match.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-3">
             {trending.map((m) => (
               <MarketCard
                 key={m.id}
@@ -147,12 +133,12 @@ export default function Feed() {
 
       {/* World Cup Fixtures */}
       {fixtures.length > 0 && (
-        <section className="mb-8">
+        <section className="mb-6 md:mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              World Cup Fixtures
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Fixtures
             </h2>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground">
               {fixtures.length} matches
             </span>
           </div>

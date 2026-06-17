@@ -24,14 +24,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background font-mono">
+    <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="text-center">
         <img
           src="/vela.jpg"
           className="mx-auto mb-4 h-12 w-12 rounded-md object-cover"
           alt="Vela"
         />
-        <div className="text-sm text-muted-foreground">Vela is waking up...</div>
+        <div className="text-sm text-muted-foreground">Loading…</div>
       </div>
     </div>
   );

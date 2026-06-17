@@ -87,11 +87,11 @@ export default function EditProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 font-mono backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-md border border-border bg-card p-6"
+        className="w-full max-w-md rounded-t-md border border-border bg-card p-5 sm:rounded-md sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -200,11 +200,11 @@ export default function EditProfileModal({
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder={username}
-            maxLength={40}
+            maxLength={8}
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
           />
           <div className="mt-1 text-[10px] text-muted-foreground">
-            Leave blank to use @{username}. Max 40 characters.
+            Leave blank to use @{username}. Max 8 characters.
           </div>
         </div>
 

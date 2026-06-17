@@ -383,13 +383,11 @@ export default function MemoryMap() {
   if (!isOwner) {
     return (
       <Layout>
-        <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center font-mono">
+        <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center">
           <div className="mb-4 text-4xl">🔒</div>
-          <h2 className="mb-2 text-lg font-semibold text-foreground">
-            @{username || "unknown"}'s memory map
-          </h2>
+          <h2 className="mb-2 text-lg font-semibold text-foreground">Private memory</h2>
           <p className="text-sm text-muted-foreground">
-            Memories are encrypted to the owner's wallet. Connect as @{username || "this user"} to view them.
+            This memory map belongs to @{username}.
           </p>
         </div>
       </Layout>
@@ -399,14 +397,11 @@ export default function MemoryMap() {
   if (!authorized) {
     return (
       <Layout>
-        <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center font-mono">
+        <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center">
           <div className="mb-4 text-4xl">🦭</div>
-          <h2 className="mb-2 text-lg font-semibold text-foreground">
-            Authorize Walrus Memory
-          </h2>
+          <h2 className="mb-2 text-lg font-semibold text-foreground">Authorize memory</h2>
           <p className="mb-6 text-sm text-muted-foreground">
-            Vela stores your takes, predictions, and roast material on Walrus Mainnet.
-            Authorize a one-time delegate key to view your memory map. You&apos;ll pay a small gas fee.
+            Authorize a one-time delegate key to view your memory map.
           </p>
           {memwalError && (
             <p className="mb-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">

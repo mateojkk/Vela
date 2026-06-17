@@ -39,10 +39,10 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
   return (
     <button
       onClick={onClick}
-      className="group w-full rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-muted-foreground/40 hover:bg-accent"
+      className="group w-full rounded-md border border-border bg-card p-3 text-left transition-colors active:scale-[0.99] hover:border-muted-foreground/40 hover:bg-accent md:p-4"
     >
       <div className="flex items-start gap-3">
-        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border bg-background">
+        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-border bg-background md:h-14 md:w-14">
           {group.image ? (
             <img
               src={group.image}
@@ -53,7 +53,7 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
               }}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-xl">
+            <div className="flex h-full w-full items-center justify-center text-lg md:text-xl">
               ⚽
             </div>
           )}
@@ -63,42 +63,30 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
             {group.question}
           </h3>
-          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            {group.match ? (
-              <span className="font-mono uppercase tracking-wider">
-                Match
-              </span>
-            ) : (
-              <span className="font-mono uppercase tracking-wider">
-                Market
-              </span>
-            )}
+          <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground md:text-xs">
             {group.end_date && (
-              <>
-                <span>·</span>
-                <span>{formatEndDate(group.end_date)}</span>
-              </>
+              <span>{formatEndDate(group.end_date)}</span>
             )}
             {group.markets.length > 1 && (
               <>
                 <span>·</span>
-                <span>{group.markets.length} markets</span>
+                <span>{group.markets.length} outcomes</span>
               </>
             )}
           </div>
         </div>
 
-        <div className={`shrink-0 text-2xl font-bold tabular-nums ${color}`}>
+        <div className={`shrink-0 text-xl font-bold tabular-nums md:text-2xl ${color}`}>
           {formatProb(prob)}
         </div>
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          Vol {formatVolume(group.volume)}
+        <span className="text-[10px] text-muted-foreground md:text-xs">
+          {formatVolume(group.volume)} vol
         </span>
-        <span className="rounded-md border border-border bg-background px-3 py-1 text-xs font-medium text-foreground transition-colors group-hover:border-muted-foreground/40 group-hover:bg-accent">
-          Trade Now
+        <span className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-foreground transition-colors group-hover:border-muted-foreground/40 group-hover:bg-accent md:px-3 md:text-xs">
+          Predict
         </span>
       </div>
     </button>

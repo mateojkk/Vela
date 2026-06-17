@@ -109,8 +109,26 @@ function buildOptionsForGroup(group: MarketGroup): OutcomeOption[] {
       );
     }
   } else {
-    // Non-match market: Yes / No
-    if (subs[0]) {
+    // Non-match market.
+    // - If there are multiple sub-markets, treat each as an outcome option
+    //   (e.g. "Will Europe win the WC?", "Will South America win the WC?").
+    // - Otherwise fall back to a single Yes / No market.
+    if (subs.length > 1) {
+      for (const m of subs) {
+        const label = extractOptionLabel(m.question);
+        if (label) {
+          out.push({
+            id: `opt-${m.id}`,
+            label,
+            subMarket: m,
+            side: "yes",
+            probability: m.yes_price,
+          });
+        }
+      }
+    }
+
+    if (out.length === 0 && subs[0]) {
       out.push(
         {
           id: `yes-${subs[0].id}`,
@@ -131,6 +149,38 @@ function buildOptionsForGroup(group: MarketGroup): OutcomeOption[] {
   }
 
   return out;
+}
+
+/**
+ * Extract a short option label from a Polymarket question like
+ * "Will Europe win the 2026 FIFA World Cup?" → "Europe".
+ */
+function extractOptionLabel(question: string): string | null {
+  const q = question.trim();
+  if (!q) return null;
+
+  // "Will <subject> win ...?"
+  const winMatch = q.match(/^Will\s+(.+?)\s+win\b/i);
+  if (winMatch) return winMatch[1].trim();
+
+  // "Will the winner come from <subject>?"
+  const fromMatch = q.match(/^Will\s+(?:the\s+)?winner\s+come\s+from\s+(.+?)\??$/i);
+  if (fromMatch) return fromMatch[1].trim();
+
+  // "Will <subject> be ...?"
+  const beMatch = q.match(/^Will\s+(.+?)\s+be\b/i);
+  if (beMatch) return beMatch[1].trim();
+
+  // Generic "Will <rest>?" fallback — trim trailing prepositional clauses.
+  const genericMatch = q.match(/^Will\s+(.+?)\??$/i);
+  if (genericMatch) {
+    return genericMatch[1]
+      .replace(/\s+(?:win|be|make it|reach|come from)\s+.*$/i, "")
+      .replace(/\?$/, "")
+      .trim();
+  }
+
+  return q.replace(/\?$/, "").trim();
 }
 
 function formatCents(p: number): string {
@@ -225,11 +275,11 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 font-mono backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-md border border-border bg-card p-6"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-md border border-border bg-card p-5 sm:rounded-md sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {result ? (

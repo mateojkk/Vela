@@ -39,7 +39,7 @@ export default function Login() {
   }, [user, navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 font-mono">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <VelaLogo className="mx-auto mb-4 h-16 w-16 rounded-md object-cover" />

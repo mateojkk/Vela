@@ -68,7 +68,7 @@ export default function Profile() {
     return (
       <Layout>
         <div className="flex items-center justify-center py-20">
-          <div className="text-sm text-muted-foreground">Loading profile...</div>
+          <div className="text-sm text-muted-foreground">Loading…</div>
         </div>
       </Layout>
     );
@@ -78,9 +78,9 @@ export default function Profile() {
     return (
       <Layout>
         <div className="py-20 text-center">
-          <h1 className="mb-2 text-2xl font-bold">User not found</h1>
+          <h1 className="mb-2 text-xl font-bold">Not found</h1>
           <Link to="/" className="text-sm text-primary hover:underline">
-            Go back to Vela
+            Home
           </Link>
         </div>
       </Layout>
@@ -140,8 +140,8 @@ export default function Profile() {
 
   return (
     <Layout>
-      <section className="mb-8">
-        <div className="mb-6 flex items-start gap-4">
+      <section className="mb-6">
+        <div className="mb-5 flex items-start gap-3 md:gap-4">
           <Avatar
             src={user.avatar_url}
             username={user.username}
@@ -149,48 +149,42 @@ export default function Profile() {
             size="xl"
           />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-2xl font-bold text-foreground">
+            <h1 className="truncate text-xl font-bold text-foreground md:text-2xl">
               {user.display_name || `@${user.username}`}
             </h1>
             {user.display_name && (
-              <p className="text-sm text-muted-foreground">@{user.username}</p>
+              <p className="text-xs text-muted-foreground md:text-sm">@{user.username}</p>
             )}
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Tracked by Vela since{" "}
-              {new Date(user.created_at).toLocaleDateString()}
-            </p>
-            <div className="mt-2">
-              <ShareButton
-                url={`${window.location.origin}/api/og?type=profile&username=${encodeURIComponent(user.username)}`}
-                title={`@${user.username} on Vela`}
-                text={`@${user.username} is making World Cup 2026 calls on Vela — ${record.correct}/${record.total_predictions} correct (${record.accuracy_pct.toFixed(1)}% accuracy).`}
-              />
-            </div>
             {isOwnProfile && (
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   onClick={() => setEditing(true)}
-                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-muted-foreground/40 hover:bg-accent"
+                  className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-foreground hover:border-muted-foreground/40 hover:bg-accent md:px-3 md:text-xs"
                 >
-                  Edit profile
+                  Edit
                 </button>
                 <button
                   onClick={handleCheckResolutions}
                   disabled={checking}
-                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground disabled:opacity-50"
-                  title="Check for newly-resolved predictions on Polymarket"
+                  className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground disabled:opacity-50 md:px-3 md:text-xs"
+                  title="Refresh resolved predictions"
                 >
-                  {checking ? "Checking…" : "Refresh record"}
+                  {checking ? "…" : "Refresh"}
                 </button>
                 <button
                   onClick={() => setResetConfirm(true)}
-                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-danger hover:border-danger/60 hover:bg-danger/10"
+                  className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-danger hover:border-danger/60 hover:bg-danger/10 md:px-3 md:text-xs"
                 >
-                  Reset memory
+                  Reset
                 </button>
               </div>
             )}
           </div>
+          <ShareButton
+            url={`${window.location.origin}/api/og?type=profile&username=${encodeURIComponent(user.username)}`}
+            title={`@${user.username} on Vela`}
+            text={`@${user.username} is making World Cup 2026 calls on Vela — ${record.correct}/${record.total_predictions} correct (${record.accuracy_pct.toFixed(1)}% accuracy).`}
+          />
         </div>
 
         {isOwnProfile && checkMessage && (
@@ -199,29 +193,29 @@ export default function Profile() {
           </p>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-md border border-border bg-card p-4 text-center">
-            <div className="text-2xl font-bold tabular-nums text-foreground">
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <div className="rounded-md border border-border bg-card p-3 text-center md:p-4">
+            <div className="text-lg font-bold tabular-nums text-foreground md:text-2xl">
               {record.accuracy_pct.toFixed(1)}%
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-              Accuracy
+            <div className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground md:text-[10px]">
+              Acc
             </div>
           </div>
-          <div className="rounded-md border border-border bg-card p-4 text-center">
-            <div className="text-2xl font-bold tabular-nums text-foreground">
+          <div className="rounded-md border border-border bg-card p-3 text-center md:p-4">
+            <div className="text-lg font-bold tabular-nums text-foreground md:text-2xl">
               #{record.rank || "—"}
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground md:text-[10px]">
               Rank
             </div>
           </div>
-          <div className="rounded-md border border-border bg-card p-4 text-center">
-            <div className="text-2xl font-bold tabular-nums text-foreground">
+          <div className="rounded-md border border-border bg-card p-3 text-center md:p-4">
+            <div className="text-lg font-bold tabular-nums text-foreground md:text-2xl">
               {record.correct}/{record.total_predictions}
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-              Record
+            <div className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground md:text-[10px]">
+              Rec
             </div>
           </div>
         </div>
@@ -229,25 +223,21 @@ export default function Profile() {
 
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Recent Predictions
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Predictions
           </h2>
-          {record.total_predictions > 0 ? (
+          {record.total_predictions > 0 && (
             <Link
               to={`/u/${user.username}/predictions`}
-              className="text-xs font-semibold text-primary hover:opacity-80"
+              className="text-[10px] font-semibold text-primary hover:opacity-80"
             >
-              View all {record.total_predictions} →
+              All {record.total_predictions} →
             </Link>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              {recent_predictions.length} total
-            </span>
           )}
         </div>
         {recent_predictions.length === 0 ? (
-          <div className="rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            No predictions yet. Talk to Vela to get started.
+          <div className="rounded-md border border-border bg-card p-5 text-center text-xs text-muted-foreground">
+            No predictions yet.
           </div>
         ) : (
           <div className="space-y-2">
@@ -265,12 +255,12 @@ export default function Profile() {
                     <div className="truncate text-sm font-medium text-foreground">
                       {context}
                     </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      Picked {p.user_pick} · {p.type === "match" ? "Match" : "Market"}
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                      {p.user_pick}
                     </div>
                   </div>
                   <span
-                    className={`ml-3 text-xs font-semibold ${outcomeColor(p.outcome)}`}
+                    className={`ml-3 text-[10px] font-semibold ${outcomeColor(p.outcome)}`}
                   >
                     {outcomeLabel(p.outcome)}
                   </span>
@@ -283,34 +273,17 @@ export default function Profile() {
 
       {recent_chats && recent_chats.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Recent Conversations
+          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Chats
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {recent_chats.map((c, idx) => (
               <div
                 key={idx}
-                className="rounded-md border border-border bg-card p-4 hover:border-muted-foreground/40"
+                className="rounded-md border border-border bg-card p-3 hover:border-muted-foreground/40"
               >
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 text-sm">
-                    <Avatar
-                      src={user.avatar_url}
-                      username={user.username}
-                      displayName={user.display_name}
-                      size="xs"
-                    />
-                    <p className="text-muted-foreground">{c.message}</p>
-                  </div>
-                  <div className="flex gap-3 pl-9">
-                    <img
-                      src="/vela.jpg"
-                      className="mt-0.5 h-6 w-6 shrink-0 rounded-md object-cover"
-                      alt="Vela"
-                    />
-                    <p className="text-sm leading-relaxed text-foreground">{c.reply}</p>
-                  </div>
-                </div>
+                <p className="mb-1 truncate text-xs text-muted-foreground">{c.message}</p>
+                <p className="truncate text-sm text-foreground">{c.reply}</p>
               </div>
             ))}
           </div>
@@ -334,19 +307,18 @@ export default function Profile() {
 
       {resetConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 font-mono backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
           onClick={() => setResetConfirm(false)}
         >
           <div
-            className="w-full max-w-md rounded-md border border-border bg-card p-6"
+            className="w-full max-w-md rounded-t-md border border-border bg-card p-5 sm:rounded-md sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="mb-2 text-lg font-semibold text-foreground">
-              Reset Vela's memory?
+              Reset?
             </h2>
             <p className="mb-4 text-sm text-muted-foreground">
-              This will permanently delete your chat history and predictions.
-              Your username and profile will be kept. This cannot be undone.
+              Deletes chats and predictions. Profile stays.
             </p>
             {resetMessage && (
               <p className="mb-3 rounded-md border border-border bg-background p-2 text-xs text-foreground">

@@ -3,7 +3,6 @@ import { useAuth } from "../hooks/useAuth";
 import { useState, useRef, useEffect } from "react";
 import Avatar from "./Avatar";
 import BottomNav from "./BottomNav";
-import { getDisplayName } from "../lib/displayName";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -23,9 +22,7 @@ export default function Layout({
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
-  const [userOpen, setUserOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
-  const userRef = useRef<HTMLDivElement>(null);
 
   const nav = [
     { label: "Markets", href: "/feed" },
@@ -39,18 +36,15 @@ export default function Layout({
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setNavOpen(false);
       }
-      if (userRef.current && !userRef.current.contains(e.target as Node)) {
-        setUserOpen(false);
-      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-mono" key={location.pathname}>
+    <div className="min-h-screen bg-background text-foreground" key={location.pathname}>
       <header className="sticky top-0 z-30 w-full border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1350px] items-center gap-3 px-4 md:min-h-[68px] md:px-6">
+        <div className="mx-auto flex h-12 max-w-[1350px] items-center gap-3 px-3 md:h-14 md:px-4 lg:min-h-[68px] lg:px-6">
           {/* Vela logo — image only, no text */}
           <Link
             to="/feed"
@@ -59,7 +53,7 @@ export default function Layout({
           >
             <img
               src="/vela.jpg"
-              className="h-7 w-7 rounded-md object-cover"
+              className="h-6 w-6 rounded-md object-cover md:h-7 md:w-7"
               alt="Vela"
             />
           </Link>
@@ -96,8 +90,8 @@ export default function Layout({
 
           {/* Right actions */}
           <div className="ml-auto flex items-center gap-2">
-            {/* Nav dropdown */}
-            <div ref={navRef} className="relative">
+            {/* Nav dropdown — desktop only; mobile uses BottomNav */}
+            <div ref={navRef} className="relative hidden md:block">
               <button
                 type="button"
                 onClick={() => setNavOpen((v) => !v)}
@@ -126,6 +120,7 @@ export default function Layout({
                       <Link
                         key={item.href}
                         to={item.href}
+                        onClick={() => setNavOpen(false)}
                         className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
                           active
                             ? "bg-accent text-foreground"
@@ -139,77 +134,48 @@ export default function Layout({
                       </Link>
                     );
                   })}
+                  {user && (
+                    <>
+                      <div className="my-1 border-t border-border" />
+                      <Link
+                        to={user.username ? `/u/${user.username}` : "/onboarding"}
+                        onClick={() => setNavOpen(false)}
+                        className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                          location.pathname.startsWith("/u/")
+                            ? "bg-accent text-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        }`}
+                      >
+                        Profile
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setNavOpen(false);
+                          signOut();
+                        }}
+                        className="block w-full rounded-md px-3 py-2 text-left text-sm text-danger hover:bg-accent"
+                      >
+                        Sign out
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
             {user ? (
-              <div ref={userRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setUserOpen((v) => !v)}
-                  aria-label="Account"
-                  className="flex items-center gap-2 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                  <Avatar
-                    src={user.avatar_url}
-                    username={user.username}
-                    displayName={user.display_name}
-                    size="sm"
-                  />
-                </button>
-                {userOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-64 rounded-md border border-border bg-card p-1 shadow-2xl">
-                    <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-                      <Avatar
-                        src={user.avatar_url}
-                        username={user.username}
-                        displayName={user.display_name}
-                        size="md"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-foreground">
-                          {getDisplayName(user.display_name, user.username)}
-                        </div>
-                        <div className="truncate text-[10px] text-muted-foreground">
-                          {user.email}
-                        </div>
-                      </div>
-                    </div>
-                    <Link
-                      to={user.username ? `/u/${user.username}` : "/onboarding"}
-                      className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      to="/feed"
-                      className="block rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-                    >
-                      Markets
-                    </Link>
-                    <Link
-                      to="/leaderboard"
-                      className="block rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-                    >
-                      Leaderboard
-                    </Link>
-                    <Link
-                      to="/memory"
-                      className="block rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-                    >
-                      Memory
-                    </Link>
-                    <div className="my-1 border-t border-border" />
-                    <button
-                      onClick={signOut}
-                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-danger hover:bg-accent"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                )}
-              </div>
+              <Link
+                to={user.username ? `/u/${user.username}` : "/onboarding"}
+                aria-label="Profile"
+                className="flex items-center gap-2 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <Avatar
+                  src={user.avatar_url}
+                  username={user.username}
+                  displayName={user.display_name}
+                  size="sm"
+                />
+              </Link>
             ) : (
               <>
                 <Link
@@ -255,7 +221,7 @@ export default function Layout({
         )}
       </header>
 
-      <main className="mx-auto max-w-[1350px] px-4 py-6 pb-24 md:px-6 md:pb-6">
+      <main className="mx-auto max-w-[1350px] px-3 py-4 pb-24 md:px-4 md:py-6 lg:px-6 md:pb-6">
         {children}
       </main>
       <BottomNav username={user?.username} />

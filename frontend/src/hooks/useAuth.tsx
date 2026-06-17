@@ -28,38 +28,65 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function normalizeAddress(address: string | undefined): string | null {
+  if (!address) return null;
+  const lower = address.toLowerCase().trim();
+  return lower.startsWith("0x") ? lower : `0x${lower}`;
+}
+
+function profileKey(address: string) {
+  return `vela_profile_${address}`;
+}
+
 async function loadProfile(
   address: string
 ): Promise<Omit<AuthUser, "id" | "email">> {
+  const normalized = normalizeAddress(address);
+  if (!normalized) return {};
+
+  // Use a cached profile while the network request is in flight so reconnects
+  // feel instant and survive short-lived network issues.
+  const cached = localStorage.getItem(profileKey(normalized));
+  let initial: Omit<AuthUser, "id" | "email"> | null = null;
+  if (cached) {
+    try {
+      initial = JSON.parse(cached);
+    } catch {
+      // ignore corrupt cache
+    }
+  }
+
   try {
     const res = await fetch(
-      `/api/profile?email=${encodeURIComponent(address)}`,
+      `/api/profile?email=${encodeURIComponent(normalized)}`,
       {
         headers: {
-          "X-Sui-Address": address,
-          "X-User-Email": address,
+          "X-Sui-Address": normalized,
+          "X-User-Email": normalized,
         },
       }
     );
     if (res.ok) {
       const data = await res.json();
       const u = data.user;
-      return {
+      const profile = {
         username: u?.username ?? undefined,
         display_name: u?.display_name ?? null,
         avatar_url: u?.avatar_url ?? null,
         memwal_account_id: u?.memwal_account_id ?? null,
       };
+      localStorage.setItem(profileKey(normalized), JSON.stringify(profile));
+      return profile;
     }
   } catch {
-    // fall through to empty profile
+    // fall through to cached/empty profile
   }
-  return {};
+  return initial ?? {};
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const account = useCurrentAccount();
-  const address = account?.address;
+  const address = normalizeAddress(account?.address) ?? undefined;
   const { mutate: disconnect } = useDisconnectWallet();
 
   const [enrichedUser, setEnrichedUser] = useState<AuthUser | null>(null);
