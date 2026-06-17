@@ -117,6 +117,7 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
                 record = lb.data[0] if lb.data else None
 
     relevant_texts = (memory_context or {}).get("relevant_memories", [])
+    recent_texts = (memory_context or {}).get("recent_memories", [])
     failed_preds = (memory_context or {}).get("failed_predictions", [])
     user_opinions = (memory_context or {}).get("user_opinions", [])
     vela_predictions = (memory_context or {}).get("vela_predictions", [])
@@ -206,6 +207,8 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
         parts.append("User's past opinions and hot takes:\n" + "\n".join(f"- {t}" for t in user_opinions[:5]))
     if relevant_texts:
         parts.append("Relevant memories:\n" + "\n".join(f"- {t}" for t in relevant_texts))
+    if recent_texts:
+        parts.append("Recent memories from past chats:\n" + "\n".join(f"- {t}" for t in recent_texts[:10]))
     if conversation_history:
         recent = conversation_history[-6:]
         parts.append(

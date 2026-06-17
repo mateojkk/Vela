@@ -39,6 +39,7 @@ interface BriefData {
 
 interface MemoryContext {
   relevant_memories: string[];
+  recent_memories: string[];
   failed_predictions: string[];
   user_opinions: string[];
   vela_predictions: string[];
@@ -167,20 +168,24 @@ export default function Chat() {
   }
 
   async function buildMemoryContext(message: string): Promise<MemoryContext> {
-    const [relevant, failed, opinions, vela] = await Promise.all([
+    const [relevant, recent, failed, opinions, vela] = await Promise.all([
       recall(message, { limit: 5 }).then((r) => r.results.map((m) => m.text)).catch(() => []),
-      recall("wrong incorrect miss fail", { limit: 5 })
+      recall("chat conversation history", { limit: 10 })
         .then((r) => r.results.map((m) => m.text))
         .catch(() => []),
-      recall("think believe feel reckon opinion take", { limit: 5 })
+      recall("wrong incorrect miss fail bad prediction", { limit: 5 })
         .then((r) => r.results.map((m) => m.text))
         .catch(() => []),
-      recall("Vela predicted", { limit: 20 })
+      recall("user opinion take belief feel think", { limit: 5 })
+        .then((r) => r.results.map((m) => m.text))
+        .catch(() => []),
+      recall("Vela prediction pick call", { limit: 20 })
         .then((r) => r.results.map((m) => m.text))
         .catch(() => []),
     ]);
     return {
       relevant_memories: relevant,
+      recent_memories: recent,
       failed_predictions: failed,
       user_opinions: opinions,
       vela_predictions: vela,
@@ -220,11 +225,16 @@ export default function Chat() {
       }
       refreshSessions();
 
-      // Fire-and-forget memory write.
+      // Fire-and-forget memory writes. Separate entries make recall more targeted.
       if (memwal && authorized) {
-        remember(`User said: ${msg}\nAgent replied: ${data.reply}`).catch((err) => {
-          console.error("Memory write failed:", err);
-        });
+        Promise.all([
+          remember(`User said: ${msg}`).catch((err) => {
+            console.error("Memory write (user) failed:", err);
+          }),
+          remember(`Vela replied: ${data.reply}`).catch((err) => {
+            console.error("Memory write (agent) failed:", err);
+          }),
+        ]);
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Something broke. Even I have off days. Try again.";
