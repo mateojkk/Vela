@@ -5,6 +5,12 @@ from urllib.parse import urlparse, parse_qs
 from lib.common import get_supabase, send_json, require_auth_email, read_json_body
 
 
+def _column_missing_error(exc: Exception, column: str) -> bool:
+    """Detect Postgres/SQLAlchemy 'column does not exist' errors."""
+    msg = str(exc)
+    return column in msg or "42703" in msg
+
+
 def _sync_leaderboard(supabase, user: dict):
     """Keep the leaderboard row in sync with the users table's display fields.
     Gracefully no-ops if the leaderboard doesn't have those columns yet."""
@@ -299,7 +305,15 @@ class handler(BaseHTTPRequestHandler):
                     update["avatar_url"] = avatar_url
                 if memwal_account_id is not None:
                     update["memwal_account_id"] = memwal_account_id
-                supabase.table("users").update(update).eq("email", email).execute()
+                try:
+                    supabase.table("users").update(update).eq("email", email).execute()
+                except Exception as exc:
+                    if _column_missing_error(exc, "memwal_account_id") and "memwal_account_id" in update:
+                        update.pop("memwal_account_id")
+                        if update:
+                            supabase.table("users").update(update).eq("email", email).execute()
+                    else:
+                        raise
                 _sync_leaderboard(supabase, {**existing.data[0], **update})
                 send_json(self, 200, {"status": "updated"})
                 return
@@ -317,7 +331,14 @@ class handler(BaseHTTPRequestHandler):
                 "avatar_url": avatar_url,
                 "memwal_account_id": memwal_account_id,
             }
-            supabase.table("users").insert(user_row).execute()
+            try:
+                supabase.table("users").insert(user_row).execute()
+            except Exception as exc:
+                if _column_missing_error(exc, "memwal_account_id"):
+                    user_row.pop("memwal_account_id", None)
+                    supabase.table("users").insert(user_row).execute()
+                else:
+                    raise
             supabase.table("leaderboard").insert({
                 "user_id": user_id,
                 "username": username,
@@ -383,7 +404,17 @@ class handler(BaseHTTPRequestHandler):
 
         supabase = get_supabase()
         try:
-            result = supabase.table("users").update(updates).eq("email", email).execute()
+            try:
+                result = supabase.table("users").update(updates).eq("email", email).execute()
+            except Exception as exc:
+                if _column_missing_error(exc, "memwal_account_id") and "memwal_account_id" in updates:
+                    updates.pop("memwal_account_id")
+                    if not updates:
+                        send_json(self, 400, {"error": "No fields to update"})
+                        return
+                    result = supabase.table("users").update(updates).eq("email", email).execute()
+                else:
+                    raise
             if not result.data:
                 send_json(self, 404, {"error": "User not found"})
                 return
