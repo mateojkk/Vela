@@ -161,6 +161,7 @@ export interface UseMemWalResult {
   error: string | null;
   authorize: () => Promise<void>;
   remember: (text: string) => Promise<unknown>;
+  rememberAndWait: (text: string, timeoutMs?: number) => Promise<unknown>;
   recall: (
     query: string,
     options?: { limit?: number; maxDistance?: number }
@@ -197,7 +198,12 @@ export function useMemWal(): UseMemWalResult {
         saveAccountId(address, storedAccountId);
       }
       setAccountId(storedAccountId);
-      setAuthorized(isMarkedAuthorized(address) ? true : null);
+
+      // Only consider ourselves authorized if the localStorage flag, delegate key,
+      // and account ID are all present. Otherwise force re-authorization.
+      const marked = isMarkedAuthorized(address);
+      const canAuthorize = !!(storedAccountId && d);
+      setAuthorized(marked && canAuthorize ? true : marked ? false : null);
     });
     return () => {
       cancelled = true;
@@ -376,6 +382,25 @@ export function useMemWal(): UseMemWalResult {
     [memwal, address]
   );
 
+  const rememberAndWait = useCallback(
+    async (text: string, timeoutMs = 15_000) => {
+      if (!memwal) throw new Error("MemWal not ready");
+      try {
+        const result = await memwal.rememberAndWait(text, undefined, { timeoutMs });
+        if (address) markAuthorized(address, true);
+        setAuthorized(true);
+        return result;
+      } catch (err) {
+        if (isAuthError(err) && address) {
+          markAuthorized(address, false);
+          setAuthorized(false);
+        }
+        throw err;
+      }
+    },
+    [memwal, address]
+  );
+
   const recall = useCallback(
     async (query: string, options?: { limit?: number; maxDistance?: number }) => {
       if (!memwal) throw new Error("MemWal not ready");
@@ -410,6 +435,7 @@ export function useMemWal(): UseMemWalResult {
     error,
     authorize,
     remember,
+    rememberAndWait,
     recall,
     clearError,
   };

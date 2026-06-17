@@ -65,7 +65,7 @@ export default function Chat() {
     loading: memwalLoading,
     error: memwalError,
     authorize,
-    remember,
+    rememberAndWait,
     recall,
     clearError,
   } = useMemWal();
@@ -79,6 +79,8 @@ export default function Chat() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(false);
+  const [memoryStatus, setMemoryStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [memoryError, setMemoryError] = useState<string | null>(null);
   const sessionsRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -225,16 +227,21 @@ export default function Chat() {
       }
       refreshSessions();
 
-      // Fire-and-forget memory writes. Separate entries make recall more targeted.
+      // Persist conversation memories and surface any failures to the user.
       if (memwal && authorized) {
+        setMemoryStatus("saving");
+        setMemoryError(null);
         Promise.all([
-          remember(`User said: ${msg}`).catch((err) => {
-            console.error("Memory write (user) failed:", err);
-          }),
-          remember(`Vela replied: ${data.reply}`).catch((err) => {
-            console.error("Memory write (agent) failed:", err);
-          }),
-        ]);
+          rememberAndWait(`User said: ${msg}`, 15_000),
+          rememberAndWait(`Vela replied: ${data.reply}`, 15_000),
+        ])
+          .then(() => setMemoryStatus("saved"))
+          .catch((err) => {
+            const message = err instanceof Error ? err.message : "Memory sync failed";
+            console.error("Memory write failed:", err);
+            setMemoryError(message);
+            setMemoryStatus("error");
+          });
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Something broke. Even I have off days. Try again.";
@@ -537,6 +544,19 @@ export default function Chat() {
                 {t}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Memory sync status */}
+        {(memoryStatus === "saving" || memoryStatus === "saved" || memoryError) && (
+          <div className="mb-2 flex items-center gap-2 font-mono text-[10px]">
+            {memoryError ? (
+              <span className="text-danger">Memory sync failed: {memoryError}</span>
+            ) : memoryStatus === "saving" ? (
+              <span className="text-muted-foreground">Saving to Walrus Memory…</span>
+            ) : (
+              <span className="text-success">Saved to Walrus Memory</span>
+            )}
           </div>
         )}
 

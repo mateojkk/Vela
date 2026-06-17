@@ -204,6 +204,7 @@ export default function MemoryMap() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [pulse, setPulse] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [search, setSearch] = useState("");
@@ -245,32 +246,40 @@ export default function MemoryMap() {
 
     const load = () => {
       setLoading(true);
-      Promise.all(
-        PROBE_QUERIES.map((q) =>
-          recall(q, { limit: 20 })
-            .then((r) => r.results)
-            .catch(() => [])
-        )
+      setSyncError(null);
+      Promise.allSettled(
+        PROBE_QUERIES.map((q) => recall(q, { limit: 20 }))
       )
-        .then((batches) => {
+        .then((results) => {
           if (cancelled) return;
+          const batches: Array<{ text: string; distance: number; blob_id: string }> = [];
+          let firstError: string | null = null;
+          for (const r of results) {
+            if (r.status === "fulfilled") {
+              batches.push(...r.value.results);
+            } else {
+              const message = r.reason instanceof Error ? r.reason.message : String(r.reason);
+              if (!firstError) firstError = message;
+            }
+          }
+          if (firstError) {
+            setSyncError(firstError);
+          }
           const seen = new Set<string>();
           const fresh: Memory[] = [];
           let added = 0;
-          for (const batch of batches) {
-            for (const m of batch) {
-              if (seen.has(m.blob_id)) continue;
-              seen.add(m.blob_id);
-              if (seenIds.current.has(m.blob_id)) continue;
-              seenIds.current.add(m.blob_id);
-              fresh.push({
-                blob_id: m.blob_id,
-                text: m.text,
-                distance: m.distance,
-                type: classifyMemory(m.text),
-              });
-              added++;
-            }
+          for (const m of batches) {
+            if (seen.has(m.blob_id)) continue;
+            seen.add(m.blob_id);
+            if (seenIds.current.has(m.blob_id)) continue;
+            seenIds.current.add(m.blob_id);
+            fresh.push({
+              blob_id: m.blob_id,
+              text: m.text,
+              distance: m.distance,
+              type: classifyMemory(m.text),
+            });
+            added++;
           }
           if (added > 0) {
             setMemories((prev) => [...fresh, ...prev].slice(0, 200));
@@ -278,9 +287,6 @@ export default function MemoryMap() {
             setTimeout(() => setPulse(false), 1200);
           }
           setLastRefresh(new Date());
-        })
-        .catch(() => {
-          // ignore
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -465,15 +471,21 @@ export default function MemoryMap() {
           <div className="shrink-0">
             <div className="relative mx-auto w-fit">
               {/* Status bar */}
-              <div className={`mb-2 flex items-center justify-between font-mono text-[9px] tracking-widest ${pulse ? "text-success" : "text-muted-foreground"}`}>
+              <div className={`mb-2 flex items-center justify-between font-mono text-[9px] tracking-widest ${pulse ? "text-success" : syncError ? "text-danger" : "text-muted-foreground"}`}>
                 <span className="flex items-center gap-1.5">
-                  <span className={`h-1.5 w-1.5 rounded-full ${pulse ? "animate-pulse bg-success" : "bg-muted-foreground"}`} />
-                  {pulse ? "NEW MEMORY" : lastRefresh ? "SYNCED" : "CONNECTING"}
+                  <span className={`h-1.5 w-1.5 rounded-full ${pulse ? "animate-pulse bg-success" : syncError ? "bg-danger" : lastRefresh ? "bg-muted-foreground" : "bg-muted-foreground"}`} />
+                  {syncError ? "SYNC ERROR" : pulse ? "NEW MEMORY" : lastRefresh ? "SYNCED" : "CONNECTING"}
                 </span>
                 <span className="tabular-nums">
                   {globePoints.length}/{totalSeen} mapped
                 </span>
               </div>
+
+              {syncError && (
+                <p className="mb-2 rounded border border-danger/40 bg-danger/10 px-2 py-1 font-mono text-[9px] text-danger">
+                  {syncError}
+                </p>
+              )}
 
               {/* Canvas globe */}
               <canvas

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "../lib/api";
 import Layout from "../components/Layout";
@@ -47,7 +47,8 @@ function outcomeLabel(o: string | null): string {
 
 export default function Profile() {
   const { username } = useParams<{ username: string }>();
-  const { user: authUser } = useAuth();
+  const { user: authUser, signOut } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -303,6 +304,20 @@ export default function Profile() {
             window.dispatchEvent(new CustomEvent("vela:user-updated", { detail: updates }));
           }}
         />
+      )}
+
+      {isOwnProfile && (
+        <section className="mt-10 border-t border-border pt-6">
+          <button
+            onClick={() => {
+              signOut();
+              navigate("/login");
+            }}
+            className="w-full rounded-md border border-danger/40 bg-danger/10 py-2.5 text-sm font-medium text-danger hover:bg-danger/20"
+          >
+            Sign out
+          </button>
+        </section>
       )}
 
       {resetConfirm && (
