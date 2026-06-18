@@ -42,23 +42,32 @@ def get_live_scores_text() -> str:
     except Exception as e:
         return ""
 
+def _normalize_team(name: str) -> str:
+    import re
+    return re.sub(r'[^a-z0-9]', '', name.lower().replace('and', '').replace('republic', '').replace('the', ''))
+
 def get_finished_matches() -> dict:
-    """Returns a dict of {(home_team, away_team): 'home' | 'away' | 'draw'} for matches finished today."""
+    """Returns a dict of {(norm_home, norm_away): 'home' | 'away' | 'draw'} for matches finished in the last 7 days."""
     api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
     if not api_key:
         return {}
     
+    import datetime
+    today = datetime.date.today()
+    start = today - datetime.timedelta(days=7)
+    
     try:
+        url = f"https://api.football-data.org/v4/matches?dateFrom={start.isoformat()}&dateTo={today.isoformat()}"
         req = urllib.request.Request(
-            "https://api.football-data.org/v4/matches",
+            url,
             headers={"X-Auth-Token": api_key}
         )
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=8) as response:
             data = json.loads(response.read().decode())
         
         finished = {}
         for m in data.get("matches", []):
-            if m.get("status") == "FINISHED":
+            if m.get("status") in ["FINISHED", "AWARDED"]:
                 home = m.get("homeTeam", {}).get("name", "")
                 away = m.get("awayTeam", {}).get("name", "")
                 score_h = m.get("score", {}).get("fullTime", {}).get("home", 0)
@@ -71,7 +80,11 @@ def get_finished_matches() -> dict:
                 else:
                     outcome = "draw"
                     
-                finished[(home, away)] = outcome
+                n_home = _normalize_team(home)
+                n_away = _normalize_team(away)
+                finished[(n_home, n_away)] = outcome
+                
         return finished
-    except Exception:
+    except Exception as e:
+        print(f"[live_scores] get_finished_matches failed: {e}")
         return {}

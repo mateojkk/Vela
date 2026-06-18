@@ -74,7 +74,7 @@ async def _resolve():
 
     # Fast-path: instantly resolve matches that have finished according to football-data
     try:
-        from lib.live_scores import get_finished_matches
+        from lib.live_scores import get_finished_matches, _normalize_team
         finished_matches = get_finished_matches()
     except Exception:
         finished_matches = {}
@@ -82,7 +82,11 @@ async def _resolve():
     remaining_preds = []
     for pred in unresolved.data:
         if pred.get("type") == "match" and pred.get("home_team") and pred.get("away_team"):
-            match_key = (pred["home_team"], pred["away_team"])
+            from lib.live_scores import _normalize_team
+            h_norm = _normalize_team(pred["home_team"])
+            a_norm = _normalize_team(pred["away_team"])
+            match_key = (h_norm, a_norm)
+            
             if match_key in finished_matches:
                 outcome = finished_matches[match_key]
                 pick = pred.get("user_pick", "")
