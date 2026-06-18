@@ -41,3 +41,37 @@ def get_live_scores_text() -> str:
         return "Live Match Updates & Scores (Use this to answer questions about ongoing/finished games):\n" + "\n".join(lines)
     except Exception as e:
         return ""
+
+def get_finished_matches() -> dict:
+    """Returns a dict of {(home_team, away_team): 'home' | 'away' | 'draw'} for matches finished today."""
+    api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
+    if not api_key:
+        return {}
+    
+    try:
+        req = urllib.request.Request(
+            "https://api.football-data.org/v4/matches",
+            headers={"X-Auth-Token": api_key}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+        
+        finished = {}
+        for m in data.get("matches", []):
+            if m.get("status") == "FINISHED":
+                home = m.get("homeTeam", {}).get("name", "")
+                away = m.get("awayTeam", {}).get("name", "")
+                score_h = m.get("score", {}).get("fullTime", {}).get("home", 0)
+                score_a = m.get("score", {}).get("fullTime", {}).get("away", 0)
+                
+                if score_h > score_a:
+                    outcome = "home"
+                elif score_a > score_h:
+                    outcome = "away"
+                else:
+                    outcome = "draw"
+                    
+                finished[(home, away)] = outcome
+        return finished
+    except Exception:
+        return {}

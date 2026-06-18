@@ -68,42 +68,77 @@ async def _resolve():
     )
     if not unresolved.data:
         return {"resolved": 0, "checked": 0}
-
-    # 2. Build a unique list of market IDs to look up
-    market_ids = list({p["external_id"] for p in unresolved.data if p.get("external_id")})
-    if not market_ids:
-        return {"resolved": 0, "checked": len(unresolved.data)}
-
-    # 3. Fetch resolved outcomes for those markets
-    outcomes = fetch_resolved_market_outcomes(market_ids)
-
-    # 4. For each prediction, check if the market is resolved and decide outcome
+        
     resolved_count = 0
     affected_users: set[str] = set()
+
+    # Fast-path: instantly resolve matches that have finished according to football-data
+    try:
+        from lib.live_scores import get_finished_matches
+        finished_matches = get_finished_matches()
+    except Exception:
+        finished_matches = {}
+
+    remaining_preds = []
     for pred in unresolved.data:
-        market_id = pred.get("external_id") or ""
-        outcome = outcomes.get(market_id)
-        if outcome is None:
-            continue
+        if pred.get("type") == "match" and pred.get("home_team") and pred.get("away_team"):
+            match_key = (pred["home_team"], pred["away_team"])
+            if match_key in finished_matches:
+                outcome = finished_matches[match_key]
+                pick = pred.get("user_pick", "")
+                
+                # Compare pick to outcome
+                correct = False
+                if outcome == "home" and pick == pred["home_team"]:
+                    correct = True
+                elif outcome == "away" and pick == pred["away_team"]:
+                    correct = True
+                elif outcome == "draw" and pick.lower() == "draw":
+                    correct = True
+                    
+                db_outcome = "correct" if correct else "incorrect"
+                supabase.table("predictions").update({
+                    "resolved": True,
+                    "outcome": db_outcome,
+                }).eq("id", pred["id"]).execute()
+                
+                affected_users.add(pred["user_id"])
+                resolved_count += 1
+                continue
+        
+        remaining_preds.append(pred)
 
-        implied = _classify_user_pick(
-            pred.get("user_pick", ""),
-            pred.get("question") or "",
-        )
-        if implied is None:
-            # Can't decide — leave unresolved.
-            continue
+    # 2. Build a unique list of market IDs to look up for remaining
+    market_ids = list({p["external_id"] for p in remaining_preds if p.get("external_id")})
+    if market_ids:
+        # 3. Fetch resolved outcomes for those markets
+        outcomes = fetch_resolved_market_outcomes(market_ids)
+    
+        # 4. For each remaining prediction, check if the market is resolved and decide outcome
+        for pred in remaining_preds:
+            market_id = pred.get("external_id") or ""
+            outcome = outcomes.get(market_id)
+            if outcome is None:
+                continue
 
-        correct = implied == outcome
-        db_outcome = "correct" if correct else "incorrect"
+            implied = _classify_user_pick(
+                pred.get("user_pick", ""),
+                pred.get("question") or "",
+            )
+            if implied is None:
+                # Can't decide — leave unresolved.
+                continue
 
-        supabase.table("predictions").update({
-            "resolved": True,
-            "outcome": db_outcome,
-        }).eq("id", pred["id"]).execute()
+            correct = implied == outcome
+            db_outcome = "correct" if correct else "incorrect"
 
-        affected_users.add(pred["user_id"])
-        resolved_count += 1
+            supabase.table("predictions").update({
+                "resolved": True,
+                "outcome": db_outcome,
+            }).eq("id", pred["id"]).execute()
+
+            affected_users.add(pred["user_id"])
+            resolved_count += 1
 
     # 5. Update each affected user's leaderboard row
     for user_id in affected_users:
