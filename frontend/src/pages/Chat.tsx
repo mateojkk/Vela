@@ -65,7 +65,7 @@ export default function Chat() {
     loading: memwalLoading,
     error: memwalError,
     authorize,
-    rememberAndWait,
+    remember,
     recall,
     clearError,
   } = useMemWal();
@@ -249,13 +249,14 @@ export default function Chat() {
       }
       refreshSessions();
 
-      // Persist conversation memories and surface any failures to the user.
+      // Fire-and-forget memory writes — we don't need to wait for the
+      // Walrus upload to complete, just submit the jobs to the relayer.
       if (memwal && authorized) {
         setMemoryStatus("saving");
         setMemoryError(null);
         Promise.all([
-          rememberAndWait(`User said: ${msg}`, 15_000),
-          rememberAndWait(`Vela replied: ${streamedReply}`, 15_000),
+          remember(`User said: ${msg}`),
+          remember(`Vela replied: ${streamedReply}`),
         ])
           .then(() => {
             setMemoryStatus("saved");
@@ -602,9 +603,9 @@ export default function Chat() {
                 </button>
               </>
             ) : memoryStatus === "saving" ? (
-              <span className="text-muted-foreground">Saving to Walrus Memory…</span>
+              <span className="text-muted-foreground">Queuing to Walrus Memory…</span>
             ) : (
-              <span className="text-success">Saved to Walrus Memory</span>
+              <span className="text-success">Queued to Walrus Memory ✓</span>
             )}
           </div>
         )}
