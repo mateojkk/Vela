@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, get_groq, send_json, require_auth_email, options, normalize_address
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, options, normalize_address, find_user_id
 from lib.polymarket import fetch_wc_events, group_events_by_match
 
 
@@ -72,14 +72,8 @@ async def _build_brief(user_email: str):
             "status": m.get("status", ""),
         })
 
-    user_result = (
-        supabase.table("users")
-        .select("id")
-        .ilike("email", normalize_address(user_email) or user_email)
-        .execute()
-    )
-    if user_result.data:
-        user_id = user_result.data[0]["id"]
+    user_id = find_user_id(supabase, user_email or "")
+    if user_id:
         lb = supabase.table("leaderboard").select("*").eq("user_id", user_id).execute()
         if lb.data:
             record = lb.data[0]

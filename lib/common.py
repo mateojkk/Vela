@@ -70,6 +70,36 @@ def normalize_address(value: str | None) -> str | None:
     return cleaned or None
 
 
+def address_variants(address: str | None) -> list[str]:
+    """Return possible casings/prefix variants of a Sui address for lookup.
+
+    Handles legacy rows stored with or without the 0x prefix and mixed case."""
+    if not address:
+        return []
+    lower = address.lower().strip()
+    variants = {lower}
+    if lower.startswith("0x"):
+        variants.add(lower[2:])
+    else:
+        variants.add(f"0x{lower}")
+    return list(variants)
+
+
+def find_user_id(supabase, email: str) -> str | None:
+    """Look up a user id by email/wallet address, case-insensitively and
+    across 0x-prefix variants."""
+    variants = address_variants(email)
+    if not variants:
+        return None
+    q = supabase.table("users").select("id")
+    if len(variants) == 1:
+        q = q.ilike("email", variants[0])
+    else:
+        q = q.or_(",".join(f"email.ilike.{v}" for v in variants))
+    r = q.limit(1).execute()
+    return r.data[0]["id"] if r.data else None
+
+
 def get_auth_email(handler: BaseHTTPRequestHandler) -> str | None:
     raw = handler.headers.get("X-User-Email", "")
     if isinstance(raw, str):

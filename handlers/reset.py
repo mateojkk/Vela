@@ -16,6 +16,7 @@ from lib.common import (
     read_json_body,
     options,
     normalize_address,
+    find_user_id,
 )
 
 
@@ -44,17 +45,15 @@ class handler(BaseHTTPRequestHandler):
 
         supabase = get_supabase()
         try:
-            user_result = (
-                supabase.table("users")
-                .select("id, username")
-                .ilike("email", email)
-                .execute()
-            )
-            if not user_result.data:
+            user_id = find_user_id(supabase, email)
+            if not user_id:
                 send_json(self, 404, {"error": "User not found"})
                 return
-            user = user_result.data[0]
-            user_id = user["id"]
+            user_result = supabase.table("users").select("id, username").eq("id", user_id).execute()
+            user = user_result.data[0] if user_result.data else None
+            if not user:
+                send_json(self, 404, {"error": "User not found"})
+                return
             username = user["username"]
 
             # 1. Delete all chat sessions (cascades to chat_messages)

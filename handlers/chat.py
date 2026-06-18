@@ -17,17 +17,11 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, send_json, read_json_body, get_auth_email, options, normalize_address
+from lib.common import get_supabase, send_json, read_json_body, get_auth_email, options, normalize_address, find_user_id
 
 
 def _user_id(supabase, email: str) -> str | None:
-    r = (
-        supabase.table("users")
-        .select("id")
-        .ilike("email", normalize_address(email) or email)
-        .execute()
-    )
-    return r.data[0]["id"] if r.data else None
+    return find_user_id(supabase, email)
 
 
 def _auto_title(text: str | None) -> str:

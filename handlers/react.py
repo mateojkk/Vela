@@ -8,7 +8,7 @@ can show a "how did you do?" panel with Vela's commentary.
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, get_groq, send_json, require_auth_email, normalize_address
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, normalize_address, find_user_id
 
 
 class handler(BaseHTTPRequestHandler):
@@ -27,15 +27,15 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             supabase = get_supabase()
-            user_result = (
-                supabase.table("users").select("id, username").ilike("email", user_email).execute()
-            )
+            user_id = find_user_id(supabase, user_email)
+            if not user_id:
+                send_json(self, 200, {"results": [], "user_predictions": [], "vela_commentary": ""})
+                return
+            user_result = supabase.table("users").select("id, username").eq("id", user_id).execute()
             user = user_result.data[0] if user_result.data else None
             if not user:
                 send_json(self, 200, {"results": [], "user_predictions": [], "vela_commentary": ""})
                 return
-
-            user_id = user["id"]
             username = user["username"]
 
             preds = (

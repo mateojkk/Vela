@@ -1,7 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, send_json, require_auth_email, options, normalize_address
+from lib.common import get_supabase, send_json, require_auth_email, options, normalize_address, find_user_id
 
 
 class handler(BaseHTTPRequestHandler):
@@ -25,17 +25,14 @@ class handler(BaseHTTPRequestHandler):
         supabase = get_supabase()
 
         try:
-            user_result = (
-                supabase.table("users")
-                .select("id, username")
-                .ilike("email", user_email)
-                .execute()
-            )
+            user_id = find_user_id(supabase, user_email)
+            if not user_id:
+                send_json(self, 404, {"error": "User not found"})
+                return
+            user_result = supabase.table("users").select("id, username").eq("id", user_id).execute()
             if not user_result.data:
                 send_json(self, 404, {"error": "User not found"})
                 return
-
-            user_id = user_result.data[0]["id"]
             username = user_result.data[0]["username"]
 
             query = (

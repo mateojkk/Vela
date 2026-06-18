@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
-from lib.common import get_supabase, get_groq, send_json, require_auth_email, read_json_body, options, normalize_address
+from lib.common import get_supabase, get_groq, send_json, require_auth_email, read_json_body, options, normalize_address, find_user_id
 from handlers.chat import auto_title
 from lib.polymarket import fetch_wc_events, group_events_by_match
 
@@ -223,8 +223,7 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
 
 
 def _user_id_for(supabase, email: str) -> str | None:
-    r = supabase.table("users").select("id").ilike("email", normalize_address(email) or email).execute()
-    return r.data[0]["id"] if r.data else None
+    return find_user_id(supabase, email)
 
 
 def _load_session_history(supabase, session_id: str, user_id: str) -> list[dict]:

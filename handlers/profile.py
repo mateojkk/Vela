@@ -2,7 +2,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from lib.common import get_supabase, send_json, require_auth_email, read_json_body, normalize_address
+from lib.common import get_supabase, send_json, require_auth_email, read_json_body, normalize_address, address_variants
 
 
 def _column_missing_error(exc: Exception, column: str) -> bool:
@@ -61,32 +61,36 @@ def _select_user(supabase, *, by_email: str | None = None, by_username: str | No
     """Fetch a user with display_name/avatar_url, falling back to a basic
     select if the live DB hasn't been migrated yet.
 
-    Email lookup is case-insensitive because Sui addresses are."""
+    Email lookup is case-insensitive because Sui addresses are, and also
+    tries with/without the 0x prefix to handle legacy rows."""
     cols = "id, email, username, display_name, avatar_url, memwal_account_id, created_at"
     fallback_cols = "id, email, username, created_at"
-    email = normalize_address(by_email)
+    emails = address_variants(normalize_address(by_email))
     username = by_username.strip().lower() if by_username else None
-    try:
-        q = supabase.table("users").select(cols)
-        if email is not None:
-            q = q.ilike("email", email)
+
+    def _try_select(email_variants: list[str], use_cols: str) -> dict | None:
+        q = supabase.table("users").select(use_cols)
+        filters = []
+        if email_variants:
+            # Build an OR chain of ilike filters for each address variant.
+            q = q.or_(",".join(f"email.ilike.{ev}" for ev in email_variants))
         if username is not None:
             q = q.ilike("username", username)
         result = q.limit(1).execute()
         if result.data:
             return result.data[0]
+        return None
+
+    try:
+        row = _try_select(emails, cols)
+        if row:
+            return row
     except Exception as e:
         msg = str(e)
         if any(col in msg for col in ("display_name", "avatar_url", "memwal_account_id")) or "42703" in msg:
             try:
-                q = supabase.table("users").select(fallback_cols)
-                if email is not None:
-                    q = q.ilike("email", email)
-                if username is not None:
-                    q = q.ilike("username", username)
-                result = q.limit(1).execute()
-                if result.data:
-                    row = result.data[0]
+                row = _try_select(emails, fallback_cols)
+                if row:
                     row.setdefault("display_name", None)
                     row.setdefault("avatar_url", None)
                     row.setdefault("memwal_account_id", None)

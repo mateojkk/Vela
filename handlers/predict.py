@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
-from lib.common import get_supabase, send_json, require_auth_email, read_json_body, normalize_address
+from lib.common import get_supabase, send_json, require_auth_email, read_json_body, normalize_address, find_user_id
 
 
 class handler(BaseHTTPRequestHandler):
@@ -33,17 +33,10 @@ class handler(BaseHTTPRequestHandler):
         supabase = get_supabase()
 
         try:
-            user_result = (
-                supabase.table("users")
-                .select("id")
-                .ilike("email", user_email or "")
-                .execute()
-            )
-            if not user_result.data:
+            user_id = find_user_id(supabase, user_email or "")
+            if not user_id:
                 send_json(self, 404, {"error": "User not found"})
                 return
-
-            user_id = user_result.data[0]["id"]
             pred_id = f"pred_{uuid.uuid4().hex[:12]}"
             now = datetime.now(timezone.utc)
 
