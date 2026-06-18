@@ -53,9 +53,11 @@ async function loadProfile(
         },
       }
     );
+    console.log(`[auth] profile fetch for ${normalized.slice(0, 10)}... status=${res.status}`);
     if (res.ok) {
       const data = await res.json();
       const u = data?.user;
+      console.log(`[auth] profile response user=`, u);
       const profile = {
         username: u?.username ?? undefined,
         display_name: u?.display_name ?? null,
@@ -78,8 +80,9 @@ async function loadProfile(
       }
       return {};
     }
-  } catch {
-    // fall through to cached/empty profile
+    console.warn(`[auth] profile fetch failed status=${res.status} for ${normalized.slice(0, 10)}...`);
+  } catch (err) {
+    console.error(`[auth] profile fetch exception for ${normalized.slice(0, 10)}...`, err);
   }
   return initial ?? {};
 }

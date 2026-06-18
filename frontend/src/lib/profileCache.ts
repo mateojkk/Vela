@@ -24,10 +24,18 @@ export function loadCachedProfile(address: string): CachedProfile | null {
   const normalized = normalizeAddress(address);
   if (!normalized) return null;
   const raw = localStorage.getItem(profileKey(normalized));
-  if (!raw) return null;
+  if (!raw) {
+    console.log(`[profileCache] no cache for ${normalized.slice(0, 10)}...`);
+    return null;
+  }
   try {
-    return JSON.parse(raw) as CachedProfile;
+    const parsed = JSON.parse(raw) as CachedProfile;
+    console.log(
+      `[profileCache] loaded for ${normalized.slice(0, 10)}... username=${parsed.username ?? "none"}`
+    );
+    return parsed;
   } catch {
+    console.warn(`[profileCache] corrupt cache for ${normalized.slice(0, 10)}...`);
     return null;
   }
 }

@@ -227,6 +227,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 user = _select_user(supabase, by_email=email)
+                print(f"[profile] GET by email={email} -> user={user is not None}")
                 if not user:
                     send_json(self, 200, {"user": None})
                     return
