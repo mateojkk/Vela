@@ -152,28 +152,50 @@ export default function Chat() {
     inputRef.current?.focus();
   }
 
-  async function buildMemoryContext(message: string): Promise<MemoryContext> {
-    const [relevant, recent, failed, opinions, vela] = await Promise.all([
-      recall(message, { limit: 5 }).then((r) => r.results.map((m) => m.text)).catch(() => []),
-      recall("chat conversation history", { limit: 10 })
+  async function buildMemoryContext(
+    message: string,
+    history: AgentMessage[]
+  ): Promise<MemoryContext> {
+    // Provide some recent context to the recall query so pronouns (he, they, it)
+    // have a better chance of matching semantically related memories.
+    const recentContext = history
+      .slice(-3)
+      .map((m) => m.content)
+      .join(" ");
+    const queryContext = recentContext ? `${recentContext} ${message}` : message;
+
+    const [relevant, recent, velaContext, opinions, vela] = await Promise.all([
+      // 1. Broad semantic search using recent context + current message
+      recall(queryContext, { limit: 10 })
         .then((r) => r.results.map((m) => m.text))
         .catch(() => []),
-      recall("wrong incorrect miss fail bad prediction", { limit: 5 })
+      // 2. Search specifically for past user messages matching the context
+      recall(`User said: ${queryContext}`, { limit: 10 })
         .then((r) => r.results.map((m) => m.text))
         .catch(() => []),
-      recall("user opinion take belief feel think", { limit: 5 })
+      // 3. Search specifically for Vela's past replies
+      recall(`Vela replied: ${queryContext}`, { limit: 10 })
         .then((r) => r.results.map((m) => m.text))
         .catch(() => []),
-      recall("Vela prediction pick call", { limit: 20 })
+      // 4. General user takes
+      recall("User said: I think feel believe opinion", { limit: 10 })
+        .then((r) => r.results.map((m) => m.text))
+        .catch(() => []),
+      // 5. General Vela takes
+      recall("Vela replied: prediction pick call", { limit: 10 })
         .then((r) => r.results.map((m) => m.text))
         .catch(() => []),
     ]);
+
+    // Deduplicate exact strings across the different query results
+    const unique = (arr: string[]) => Array.from(new Set(arr));
+
     return {
-      relevant_memories: relevant,
-      recent_memories: recent,
-      failed_predictions: failed,
-      user_opinions: opinions,
-      vela_predictions: vela,
+      relevant_memories: unique([...relevant, ...recent, ...velaContext, ...vela]),
+      recent_memories: [], // Unused / merged into relevant
+      failed_predictions: [],
+      user_opinions: unique(opinions),
+      vela_predictions: unique(vela),
     };
   }
 
@@ -191,7 +213,7 @@ export default function Chat() {
       let memoryContext: MemoryContext | undefined;
       if (memwal && authorized) {
         try {
-          memoryContext = await buildMemoryContext(msg);
+          memoryContext = await buildMemoryContext(msg, messages);
         } catch (err) {
           console.error("Memory recall failed:", err);
         }
