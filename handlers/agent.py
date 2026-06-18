@@ -158,30 +158,41 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
             f"Your (Vela's) record: {vela_record['correct']}/{vela_record['total']} correct "
             f"({vela_record['accuracy']}% accuracy)."
         )
-    try:
-        fixtures = await asyncio.to_thread(get_todays_fixtures)
-        if fixtures:
-            lines = []
-            for f in fixtures:
-                t = f"vs {f['away']}"
-                if f.get("kickoff"):
-                    try:
-                        ts = datetime.fromisoformat(f["kickoff"].replace("Z", "+00:00"))
-                        t += f" at {ts.strftime('%H:%M UTC')}"
-                    except Exception:
-                        pass
-                lines.append(f"- {f['home']} {t}")
-            parts.append("Today's scheduled matches (via Polymarket):\n" + "\n".join(lines))
-    except Exception:
-        pass
+    async def fetch_fixtures():
+        try:
+            return await asyncio.to_thread(get_todays_fixtures)
+        except Exception:
+            return []
+
+    async def fetch_live():
+        try:
+            import lib.live_scores
+            return await asyncio.to_thread(lib.live_scores.get_live_scores_text)
+        except Exception as e:
+            print(f"[agent] Failed to fetch live scores: {e}")
+            return ""
+
+    fixtures, live_scores_text = await asyncio.gather(
+        fetch_fixtures(),
+        fetch_live(),
+        return_exceptions=True
+    )
+    
+    if isinstance(fixtures, list) and fixtures:
+        lines = []
+        for f in fixtures:
+            t = f"vs {f['away']}"
+            if f.get("kickoff"):
+                try:
+                    ts = datetime.fromisoformat(f["kickoff"].replace("Z", "+00:00"))
+                    t += f" at {ts.strftime('%H:%M UTC')}"
+                except Exception:
+                    pass
+            lines.append(f"- {f['home']} {t}")
+        parts.append("Today's scheduled matches (via Polymarket):\n" + "\n".join(lines))
         
-    try:
-        import lib.live_scores
-        live_scores_text = await asyncio.to_thread(lib.live_scores.get_live_scores_text)
-        if live_scores_text:
-            parts.append(live_scores_text)
-    except Exception as e:
-        print(f"[agent] Failed to fetch live scores: {e}")
+    if isinstance(live_scores_text, str) and live_scores_text:
+        parts.append(live_scores_text)
 
     if user_id:
         try:
