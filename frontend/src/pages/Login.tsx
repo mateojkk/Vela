@@ -25,10 +25,15 @@ function VelaLogo({ className }: { className?: string }) {
 }
 
 export default function Login() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Wait until the profile fetch completes before deciding where to send the
+    // user. Without this guard, a returning user's wallet reconnects and briefly
+    // produces a `user` with no username (before loadProfile resolves), causing
+    // the Login page to erroneously redirect them to /onboarding every time.
+    if (loading) return;
     if (user) {
       if (!user.username) {
         navigate("/onboarding");
@@ -36,7 +41,7 @@ export default function Login() {
         navigate("/");
       }
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

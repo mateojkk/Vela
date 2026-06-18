@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useMemWal } from "../hooks/useMemWal";
@@ -43,7 +43,7 @@ export default function Onboarding() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(false);
-  const { user, refreshUser } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const {
     authorized,
     loading: memwalLoading,
@@ -52,6 +52,14 @@ export default function Onboarding() {
     authorize,
   } = useMemWal();
   const navigate = useNavigate();
+
+  // If the profile loaded and the user already has a username (e.g., they were
+  // redirected here before loadProfile finished), send them straight to Chat.
+  useEffect(() => {
+    if (!authLoading && user?.username) {
+      navigate("/", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   async function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault();
