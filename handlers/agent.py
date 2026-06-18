@@ -171,9 +171,18 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
                     except Exception:
                         pass
                 lines.append(f"- {f['home']} {t}")
-            parts.append("Today's scheduled matches:\n" + "\n".join(lines))
+            parts.append("Today's scheduled matches (via Polymarket):\n" + "\n".join(lines))
     except Exception:
         pass
+        
+    try:
+        import lib.live_scores
+        live_scores_text = await asyncio.to_thread(lib.live_scores.get_live_scores_text)
+        if live_scores_text:
+            parts.append(live_scores_text)
+    except Exception as e:
+        print(f"[agent] Failed to fetch live scores: {e}")
+
     if user_id:
         try:
             r = (
