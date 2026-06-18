@@ -143,6 +143,57 @@ const server = createServer(async (req, res) => {
     // Take only the first path segment after /api/ as the handler name.
     // e.g. /api/memwal/remember → "memwal", /api/health → "health"
     const scriptName = pathname.slice(5).split("/")[0];
+
+    // Streaming endpoints live directly in api/ (not handlers/) and pipe stdout
+    // straight to the response so SSE chunks aren't buffered.
+    const STREAMING_SCRIPTS = ["agent_stream"];
+    if (STREAMING_SCRIPTS.includes(scriptName)) {
+      const apiScriptPath = resolvePath(API_DIR, `${scriptName}.py`);
+      if (!existsSync(apiScriptPath)) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: `Unknown endpoint: ${scriptName}` }));
+        return;
+      }
+      // Collect body
+      let rawBody = Buffer.alloc(0);
+      if (["POST", "PATCH", "PUT"].includes(req.method)) {
+        rawBody = await new Promise((resolve) => {
+          const chunks = [];
+          req.on("data", (c) => chunks.push(c));
+          req.on("end", () => resolve(Buffer.concat(chunks)));
+        });
+      }
+      const passthroughHeaders = {};
+      if (req.headers["x-user-email"]) passthroughHeaders["X-User-Email"] = req.headers["x-user-email"];
+      if (req.headers["x-sui-address"]) passthroughHeaders["X-Sui-Address"] = req.headers["x-sui-address"];
+
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+      });
+
+      const proc = spawn(PYTHON, [
+        resolvePath(__dirname, "api", "_dev_stream_handler.py"),
+        apiScriptPath,
+        req.method,
+        url.search || "",
+        JSON.stringify(passthroughHeaders),
+      ], {
+        cwd: __dirname,
+        env: { ...process.env },
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      if (rawBody.length) proc.stdin.write(rawBody);
+      proc.stdin.end();
+      proc.stdout.pipe(res);
+      proc.stderr.on("data", (d) => console.error(`\x1b[31m[${scriptName}]\x1b[0m`, d.toString()));
+      proc.on("close", () => res.end());
+      req.on("close", () => proc.kill());
+      return;
+    }
+
     const scriptPath = resolvePath(HANDLERS_DIR, `${scriptName}.py`);
 
     if (!existsSync(scriptPath)) {

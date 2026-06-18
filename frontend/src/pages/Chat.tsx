@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useMemWal } from "../hooks/useMemWal";
-import { apiGet, apiPost } from "../lib/api";
+import { apiGet, apiStream } from "../lib/api";
 import type { AgentMessage, ChatSession } from "../../../shared/types";
 import Layout from "../components/Layout";
 import Greeting from "../components/Greeting";
@@ -214,16 +214,38 @@ export default function Chat() {
         }
       }
 
-      const data = await apiPost<{ reply: string; session_id: string; title?: string }>("/agent", {
-        user_email: user?.email,
-        message: msg,
-        session_id: activeSessionId,
-        conversation_history: messages.slice(-10),
-        memory_context: memoryContext,
-      });
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
-      if (data.session_id && data.session_id !== activeSessionId) {
-        setActiveSessionId(data.session_id);
+      // Add a placeholder assistant message that we'll fill token-by-token.
+      let streamedReply = "";
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      let finalSessionId = activeSessionId;
+
+      await apiStream(
+        "/agent_stream",
+        {
+          user_email: user?.email,
+          message: msg,
+          session_id: activeSessionId,
+          conversation_history: messages.slice(-10),
+          memory_context: memoryContext,
+        },
+        // onDelta — append each token to the last message in place
+        (token) => {
+          streamedReply += token;
+          setMessages((prev) => {
+            const next = [...prev];
+            next[next.length - 1] = { role: "assistant", content: streamedReply };
+            return next;
+          });
+        },
+        // onDone — capture session id
+        (sessionId, _title) => {
+          finalSessionId = sessionId || activeSessionId;
+        }
+      );
+
+      if (finalSessionId && finalSessionId !== activeSessionId) {
+        setActiveSessionId(finalSessionId);
       }
       refreshSessions();
 
@@ -233,17 +255,14 @@ export default function Chat() {
         setMemoryError(null);
         Promise.all([
           rememberAndWait(`User said: ${msg}`, 15_000),
-          rememberAndWait(`Vela replied: ${data.reply}`, 15_000),
+          rememberAndWait(`Vela replied: ${streamedReply}`, 15_000),
         ])
           .then(() => {
             setMemoryStatus("saved");
-            // Auto-clear the "saved" badge after 3 s so it doesn't linger.
             setTimeout(() => setMemoryStatus("idle"), 3_000);
           })
           .catch((err) => {
             const raw = err instanceof Error ? err.message : String(err);
-            // "Failed to fetch" is a browser network error — the relayer is
-            // temporarily unreachable. Give the user a friendlier message.
             const isNetworkError =
               raw === "Failed to fetch" ||
               raw.toLowerCase().includes("network") ||
@@ -258,7 +277,14 @@ export default function Chat() {
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Something broke. Even I have off days. Try again.";
-      setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
+      // Replace the empty streaming placeholder (if any) with the error, or append.
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.content === "") {
+          return [...prev.slice(0, -1), { role: "assistant", content: errorMsg }];
+        }
+        return [...prev, { role: "assistant", content: errorMsg }];
+      });
     }
     setLoading(false);
     inputRef.current?.focus();

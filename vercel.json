@@ -5,11 +5,15 @@
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
+    { "source": "/api/agent_stream", "destination": "/api/agent_stream.py" },
     { "source": "/api/(.*)", "destination": "/api/index.py" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/index.py": {
+      "maxDuration": 60
+    },
+    "api/agent_stream.py": {
       "maxDuration": 60
     }
   },

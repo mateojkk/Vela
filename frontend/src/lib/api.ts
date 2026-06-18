@@ -109,3 +109,61 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) throw await parseError(res);
   return res.json();
 }
+
+/**
+ * Stream a POST request as SSE.
+ * Calls onDelta(token) for each streamed text chunk.
+ * Calls onDone(session_id, title) when the server sends { done: true }.
+ * Throws ApiError on network or server errors.
+ */
+export async function apiStream(
+  path: string,
+  body: unknown,
+  onDelta: (token: string) => void,
+  onDone: (sessionId: string, title: string | null) => void
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(
+      "Can't reach Vela right now. Check your connection and try again.",
+      0
+    );
+  }
+  if (!res.ok) throw await parseError(res);
+  if (!res.body) throw new ApiError("No response body", 0);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+
+    // SSE lines: "data: {...}\n\n"
+    const events = buf.split("\n\n");
+    buf = events.pop() ?? "";
+
+    for (const event of events) {
+      const line = event.trim();
+      if (!line.startsWith("data:")) continue;
+      try {
+        const data = JSON.parse(line.slice(5).trim());
+        if (data.error) throw new ApiError(data.error, 500);
+        if (data.delta) onDelta(data.delta);
+        if (data.done) onDone(data.session_id ?? "", data.title ?? null);
+      } catch (e) {
+        if (e instanceof ApiError) throw e;
+        // malformed chunk — skip
+      }
+    }
+  }
+}
+

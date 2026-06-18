@@ -16,15 +16,15 @@ import type { Transaction } from "@mysten/sui/transactions";
 import { apiPatch } from "../lib/api";
 import { useAuth } from "./useAuth";
 
-// Route MemWal requests through our own backend proxy (/api/memwal) so the
-// browser never hits the upstream relayer directly.  The relayer's CORS
-// configuration is missing Access-Control-Allow-Origin, which causes every
-// browser fetch to fail with "Failed to fetch".  The proxy forwards the signed
-// MemWal headers unchanged, so the relayer's auth still works.
+// Always route MemWal requests through our own backend proxy (/api/memwal).
+// The upstream relayer (relayer.memory.walrus.xyz) doesn't return
+// Access-Control-Allow-Origin on CORS preflights, so the browser blocks
+// direct requests with "Failed to fetch".  The proxy forwards the signed
+// MemWal headers unchanged so the relayer's auth still works.
 //
-// VITE_MEMWAL_SERVER_URL can override this for local dev or custom deployments.
-const SERVER_URL =
-  import.meta.env.VITE_MEMWAL_SERVER_URL ?? `${window.location.origin}/api/memwal`;
+// VITE_MEMWAL_SERVER_URL is intentionally ignored here — it pointed directly
+// at the relayer and bypassed the proxy, re-introducing the CORS failure.
+const SERVER_URL = `${window.location.origin}/api/memwal`;
 const PACKAGE_ID = import.meta.env.VITE_MEMWAL_PACKAGE_ID;
 const REGISTRY_ID = import.meta.env.VITE_MEMWAL_REGISTRY_ID;
 
