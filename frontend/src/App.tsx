@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useIsFetching, useIsMutating } from "@tanstack/react-query";
 import { useAuth, AuthProvider } from "./hooks/useAuth";
 import { apiGet } from "./lib/api";
 import type { MarketGroup } from "../../shared/types";
@@ -54,11 +54,25 @@ function PrefetchData() {
   return null;
 }
 
+function GlobalProgressBar() {
+  const isFetching = useIsFetching();
+  const isMutating = useIsMutating();
+  
+  if (isFetching === 0 && isMutating === 0) return null;
+
+  return (
+    <div className="pointer-events-none fixed left-0 top-0 z-[100] h-[2px] w-full overflow-hidden bg-transparent">
+      <div className="h-full w-1/3 bg-primary animate-progress" />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
+          <GlobalProgressBar />
           <PrefetchData />
           <Routes>
               <Route path="/login" element={<Login />} />
