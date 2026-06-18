@@ -59,3 +59,8 @@ create index if not exists idx_predictions_ur     on predictions(user_id, resolv
 create index if not exists idx_chat_sessions_user on chat_sessions(user_id, updated_at desc);
 create index if not exists idx_chat_messages_sess on chat_messages(session_id, created_at);
 create index if not exists idx_leaderboard_rank   on leaderboard(rank);
+
+-- Case-insensitive unique constraints so wallet addresses and usernames
+-- can't be claimed twice via different casing.
+create unique index if not exists idx_users_email_lower    on users(lower(email));
+create unique index if not exists idx_users_username_lower on users(lower(username));
