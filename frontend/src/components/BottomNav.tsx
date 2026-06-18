@@ -101,8 +101,6 @@ interface BottomNavProps {
 
 export default function BottomNav({ username }: BottomNavProps) {
   const location = useLocation();
-  // Hide on chat because the chat has its own bottom input bar.
-  if (location.pathname === "/") return null;
   // Hide on /login and /onboarding — no nav needed there.
   if (location.pathname === "/login" || location.pathname === "/onboarding") return null;
 

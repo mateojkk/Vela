@@ -4,23 +4,6 @@ import { useMemWal } from "../hooks/useMemWal";
 import { apiGet, apiStream } from "../lib/api";
 import type { AgentMessage, ChatSession } from "../../../shared/types";
 import Layout from "../components/Layout";
-import Greeting from "../components/Greeting";
-
-const SUGGESTIONS = [
-  "What's your take on today's matches?",
-  "Predict Brazil vs Argentina",
-  "What's my record this tournament?",
-  "Roast my worst take",
-  "What's the biggest upset so far?",
-  "Who's winning the whole thing?",
-];
-
-const QUICK_TAKES = [
-  "I think France is overrated",
-  "Morocco is the dark horse",
-  "Brazil wins it all",
-  "Penalties decide the final",
-];
 
 interface BriefData {
   date: string;
@@ -421,45 +404,18 @@ export default function Chat() {
 
   return (
     <Layout leftSlot={leftSlot}>
-      <div className="mx-auto flex h-[calc(100dvh-7rem)] max-w-3xl flex-col">
+      <div className="mx-auto flex h-[calc(100dvh-11rem)] md:h-[calc(100dvh-7rem)] max-w-3xl flex-col">
         {/* Messages */}
         <div className="thin-scrollbar flex-1 overflow-y-auto pb-4">
-          {messages.length === 0 && !showBrief && (
+          {messages.length === 0 && !showBrief && brief && brief.matches.length > 0 && (
             <div className="py-10 text-center">
-              <img
-                src="/vela.jpg"
-                className="mx-auto mb-6 h-20 w-20 rounded-md object-cover"
-                alt="Vela"
-              />
-              <h2 className="mb-2 text-2xl font-bold text-foreground">
-                <Greeting username={user?.username} displayName={user?.display_name} variant="return" />.
-              </h2>
-              <p className="mx-auto mb-8 max-w-md text-sm leading-relaxed text-muted-foreground">
-                I'm Vela. I watch every match, remember every take, and never forget a bad call.
-                What do you think about the World Cup?
-              </p>
-
-              {brief && brief.matches.length > 0 && (
-                <button
-                  onClick={() => setShowBrief(true)}
-                  className="mb-6 inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm text-primary hover:bg-accent"
-                >
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-                  Today's matches: {brief.matches.length} · Tap for Vela's takes
-                </button>
-              )}
-
-              <div className="flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => sendMessage(s)}
-                    className="rounded-md border border-border bg-card px-4 py-2 text-sm text-foreground hover:border-muted-foreground/40 hover:bg-accent"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
+              <button
+                onClick={() => setShowBrief(true)}
+                className="mb-6 inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm text-primary hover:bg-accent"
+              >
+                <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                Today's matches: {brief.matches.length} · Tap for Vela's takes
+              </button>
             </div>
           )}
 
@@ -571,21 +527,6 @@ export default function Chat() {
             <div ref={messagesEndRef} />
           </div>
         </div>
-
-        {/* Quick takes */}
-        {messages.length > 0 && messages.length <= 3 && !loading && (
-          <div className="mb-2 flex gap-2 overflow-x-auto py-1">
-            {QUICK_TAKES.map((t) => (
-              <button
-                key={t}
-                onClick={() => sendMessage(t)}
-                className="whitespace-nowrap rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Memory sync status */}
         {(memoryStatus === "saving" || memoryStatus === "saved" || memoryError) && (
