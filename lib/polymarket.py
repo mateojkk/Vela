@@ -280,14 +280,15 @@ def fetch_resolved_market_outcomes(ids: list[str]) -> dict[str, str]:
     chunk = 30
     for i in range(0, len(ids), chunk):
         batch = ids[i : i + chunk]
-        # The Gamma /markets endpoint supports filtering by id via comma list.
+        # The Gamma /markets endpoint supports filtering by conditionId via comma list.
         id_param = ",".join(batch)
         url = (
             f"{GAMMA_API}/markets?active=false&closed=true&limit={len(batch)}"
-            f"&order=endDate&ascending=false"
+            f"&order=endDate&ascending=false&condition_ids={id_param}"
         )
         data = _http_get_json(url, timeout=12)
         if not isinstance(data, list):
+            print(f"[polymarket] resolve fetch returned non-list: {data}")
             continue
         for m in data:
             mid = m.get("conditionId") or m.get("id")
@@ -301,15 +302,17 @@ def fetch_resolved_market_outcomes(ids: list[str]) -> dict[str, str]:
 
 def _extract_resolved_outcome(m: dict) -> str | None:
     """Return 'Yes' / 'No' for a resolved market, or None if still open."""
-    # If the market isn't actually closed, skip.
+    # If the market is still active and not closed, skip.
     if not m.get("closed") and m.get("active", True):
         return None
 
-    # The strongest signal: a non-zero resolvedBy address means the market
-    # has been resolved on-chain and the prices are the final ones.
-    if m.get("resolvedBy") in (None, "", "0x0000000000000000000000000000000000000000"):
-        return None
+    # Explicit UMA resolution result is the strongest signal.
+    uma_status = (m.get("umaResolutionStatus") or "").lower()
+    uma_resolution = (m.get("umaResolution") or "").strip()
+    if uma_status == "resolved" and uma_resolution in ("Yes", "No"):
+        return uma_resolution
 
+    # outcomePrices pinned to ~1.0 / ~0.0 is another strong signal for resolved markets.
     prices_raw = m.get("outcomePrices")
     if isinstance(prices_raw, str):
         try:
@@ -324,9 +327,12 @@ def _extract_resolved_outcome(m: dict) -> str | None:
     except (ValueError, TypeError):
         return None
 
-    # Resolved markets pin to 1.0 / 0.0 (with float drift — sometimes 0.0000004 / 0.9999996).
+    # Resolved markets pin to 1.0 / 0.0 (with float drift).
     if yes >= 0.95 and no <= 0.05:
         return "Yes"
     if no >= 0.95 and yes <= 0.05:
         return "No"
+
+    # Fallback: if the market was resolved on-chain but prices aren't obviously pinned,
+    # we still can't determine the outcome without umaResolution, so leave it unresolved.
     return None

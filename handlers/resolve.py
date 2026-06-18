@@ -24,10 +24,12 @@ def _classify_user_pick(user_pick: str, market_question: str) -> str | None:
     Return the implied outcome ("Yes" or "No") for the user's pick on a market.
     Returns None if we can't determine it.
     """
+    import re
+
     p = (user_pick or "").strip().lower()
     if not p:
         return None
-    q = (market_question or "").lower()
+    q = (market_question or "").lower().strip()
 
     # Yes / No explicit picks
     if p in ("yes", "y"):
@@ -35,10 +37,21 @@ def _classify_user_pick(user_pick: str, market_question: str) -> str | None:
     if p in ("no", "n"):
         return "No"
 
-    # If the pick text appears as the subject of a "Will X win/advance" question,
-    # treat it as a "Yes" pick. Otherwise we can't classify it.
-    if any(name.lower() in q for name in [p]):
-        return "Yes"
+    # Draw market: "Will X vs Y end in a draw?"
+    if q.startswith("will ") and " end in a draw" in q:
+        return "Yes" if p == "draw" else "No"
+
+    # Win market: "Will <team> win vs <team>?"
+    if q.startswith("will "):
+        # Extract the subject team before "win", "defeat", etc.
+        rest = q[5:]
+        m = re.match(r"^(.+?)\s+(?:win|defeat|beat|advance)\b", rest)
+        if m:
+            subject = m.group(1).strip()
+            # Strip trailing "the " if present
+            subject = re.sub(r"^the\s+", "", subject)
+            return "Yes" if p == subject else "No"
+
     return None
 
 
