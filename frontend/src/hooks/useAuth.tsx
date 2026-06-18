@@ -12,6 +12,7 @@ import {
   normalizeAddress,
   loadCachedProfile,
   saveCachedProfile,
+  clearCachedProfile,
 } from "../lib/profileCache";
 
 export interface AuthUser {
@@ -65,19 +66,17 @@ async function loadProfile(
         memwal_account_id: u?.memwal_account_id ?? null,
       };
       if (profile.username) {
-        // Only cache complete profiles so a transient 200 with no user
-        // (e.g., row missing during a migration) doesn't wipe the cache.
+        // Cache complete profiles so reconnects are instant.
         saveCachedProfile(normalized, profile);
         return profile;
       }
-      // Server reports no user. If we have a cached username, trust it for
-      // now so returning users aren't dumped back into onboarding.
-      if (initial?.username) {
-        console.warn(
-          `[auth] Server returned no profile for ${normalized}; using cached username ${initial.username}`
-        );
-        return initial;
-      }
+      // Server explicitly says this user does not exist. Clear any stale
+      // cache (e.g., after a DB wipe or deleted account) so the user is
+      // sent to onboarding instead of being ghost-logged-in.
+      console.warn(
+        `[auth] Server returned no profile for ${normalized}; clearing stale cache`
+      );
+      clearCachedProfile(normalized);
       return {};
     }
     console.warn(`[auth] profile fetch failed status=${res.status} for ${normalized.slice(0, 10)}...`);

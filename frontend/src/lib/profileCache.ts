@@ -45,3 +45,9 @@ export function saveCachedProfile(address: string, profile: CachedProfile) {
   if (!normalized || !profile.username) return;
   localStorage.setItem(profileKey(normalized), JSON.stringify(profile));
 }
+
+export function clearCachedProfile(address: string) {
+  const normalized = normalizeAddress(address);
+  if (!normalized) return;
+  localStorage.removeItem(profileKey(normalized));
+}
