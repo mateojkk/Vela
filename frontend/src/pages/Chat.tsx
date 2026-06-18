@@ -235,9 +235,22 @@ export default function Chat() {
           rememberAndWait(`User said: ${msg}`, 15_000),
           rememberAndWait(`Vela replied: ${data.reply}`, 15_000),
         ])
-          .then(() => setMemoryStatus("saved"))
+          .then(() => {
+            setMemoryStatus("saved");
+            // Auto-clear the "saved" badge after 3 s so it doesn't linger.
+            setTimeout(() => setMemoryStatus("idle"), 3_000);
+          })
           .catch((err) => {
-            const message = err instanceof Error ? err.message : "Memory sync failed";
+            const raw = err instanceof Error ? err.message : String(err);
+            // "Failed to fetch" is a browser network error — the relayer is
+            // temporarily unreachable. Give the user a friendlier message.
+            const isNetworkError =
+              raw === "Failed to fetch" ||
+              raw.toLowerCase().includes("network") ||
+              raw.toLowerCase().includes("load failed");
+            const message = isNetworkError
+              ? "Walrus Memory relayer unreachable — your chat is saved, memory sync will retry next time."
+              : raw;
             console.error("Memory write failed:", err);
             setMemoryError(message);
             setMemoryStatus("error");
@@ -551,7 +564,17 @@ export default function Chat() {
         {(memoryStatus === "saving" || memoryStatus === "saved" || memoryError) && (
           <div className="mb-2 flex items-center gap-2 font-mono text-[10px]">
             {memoryError ? (
-              <span className="text-danger">Memory sync failed: {memoryError}</span>
+              <>
+                <span className="text-warning flex-1">{memoryError}</span>
+                <button
+                  type="button"
+                  onClick={() => { setMemoryError(null); setMemoryStatus("idle"); }}
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  aria-label="Dismiss memory sync error"
+                >
+                  ✕
+                </button>
+              </>
             ) : memoryStatus === "saving" ? (
               <span className="text-muted-foreground">Saving to Walrus Memory…</span>
             ) : (

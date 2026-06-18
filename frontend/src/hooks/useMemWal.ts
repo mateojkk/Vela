@@ -16,7 +16,15 @@ import type { Transaction } from "@mysten/sui/transactions";
 import { apiPatch } from "../lib/api";
 import { useAuth } from "./useAuth";
 
-const SERVER_URL = import.meta.env.VITE_MEMWAL_SERVER_URL;
+// Route MemWal requests through our own backend proxy (/api/memwal) so the
+// browser never hits the upstream relayer directly.  The relayer's CORS
+// configuration is missing Access-Control-Allow-Origin, which causes every
+// browser fetch to fail with "Failed to fetch".  The proxy forwards the signed
+// MemWal headers unchanged, so the relayer's auth still works.
+//
+// VITE_MEMWAL_SERVER_URL can override this for local dev or custom deployments.
+const SERVER_URL =
+  import.meta.env.VITE_MEMWAL_SERVER_URL ?? `${window.location.origin}/api/memwal`;
 const PACKAGE_ID = import.meta.env.VITE_MEMWAL_PACKAGE_ID;
 const REGISTRY_ID = import.meta.env.VITE_MEMWAL_REGISTRY_ID;
 
@@ -211,7 +219,7 @@ export function useMemWal(): UseMemWalResult {
   }, [address, user?.memwal_account_id]);
 
   const memwal = useMemo(() => {
-    if (!delegate || !accountId || !SERVER_URL) return null;
+    if (!delegate || !accountId) return null;
     return MemWal.create({
       key: delegate.privateKey,
       accountId,
@@ -255,9 +263,9 @@ export function useMemWal(): UseMemWalResult {
       return;
     }
     if (!SERVER_URL) {
-      setError(
-        `VITE_MEMWAL_SERVER_URL is not set (value: ${typeof import.meta.env.VITE_MEMWAL_SERVER_URL}). Redeploy after setting env vars.`
-      );
+      // SERVER_URL has a built-in fallback; this branch is unreachable in
+      // normal operation but kept as a safety net.
+      setError("MemWal server URL not configured.");
       return;
     }
     if (!PACKAGE_ID) {

@@ -60,7 +60,7 @@ vite.stderr.on("data", (d) => {
 // Python process pool for API handlers
 const pythonProcesses = new Map();
 
-function callPython(scriptPath, method, body, query, headers = {}) {
+function callPython(scriptPath, method, body, query, headers = {}, fullPathAndQuery = "") {
   return new Promise((resolve, reject) => {
     const env = { ...process.env };
     const args = [
@@ -69,6 +69,7 @@ function callPython(scriptPath, method, body, query, headers = {}) {
       method,
       query || "",
       JSON.stringify(headers),
+      fullPathAndQuery || "",
     ];
 
     const proc = spawn(PYTHON, args, {
@@ -139,7 +140,9 @@ const server = createServer(async (req, res) => {
 
   // API routes
   if (pathname.startsWith("/api/")) {
-    const scriptName = pathname.slice(5).replace(/\.py$/, "").replace(/\//g, "");
+    // Take only the first path segment after /api/ as the handler name.
+    // e.g. /api/memwal/remember → "memwal", /api/health → "health"
+    const scriptName = pathname.slice(5).split("/")[0];
     const scriptPath = resolvePath(HANDLERS_DIR, `${scriptName}.py`);
 
     if (!existsSync(scriptPath)) {
@@ -148,11 +151,15 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    // Forward auth headers to Python
+    // Forward auth headers to Python (Vela auth + MemWal signing headers).
     const passthroughHeaders = {};
     if (req.headers["authorization"]) passthroughHeaders["Authorization"] = req.headers["authorization"];
     if (req.headers["x-user-email"]) passthroughHeaders["X-User-Email"] = req.headers["x-user-email"];
     if (req.headers["x-sui-address"]) passthroughHeaders["X-Sui-Address"] = req.headers["x-sui-address"];
+    // MemWal signed-request headers
+    for (const h of ["x-public-key", "x-signature", "x-timestamp", "x-nonce", "x-account-id", "x-seal-session", "x-delegate-key", "x-memwal-account-id", "x-memwal-namespace"]) {
+      if (req.headers[h]) passthroughHeaders[h] = req.headers[h];
+    }
 
     // Collect body for POST/PATCH/PUT
     let body = null;
@@ -171,8 +178,11 @@ const server = createServer(async (req, res) => {
     }
 
     const query = url.search || "";
+    // Pass the full original path+query so sub-path handlers (e.g. /api/memwal/remember)
+    // receive the complete path, not just /api/memwal.
+    const fullPathAndQuery = pathname + query;
     try {
-      const result = await callPython(scriptName, req.method, body, query, passthroughHeaders);
+      const result = await callPython(scriptName, req.method, body, query, passthroughHeaders, fullPathAndQuery);
       res.writeHead(result.status, {
         "Content-Type": "application/json",
         ...result.headers,

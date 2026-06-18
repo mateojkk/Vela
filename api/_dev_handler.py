@@ -79,6 +79,10 @@ def main():
         except Exception:
             pass
 
+    # argv[5]: full original path + query (e.g. /api/memwal/remember?x=1).
+    # Falls back to reconstructing /api/{script_name} for backward compat.
+    full_path_and_query = sys.argv[5] if len(sys.argv) >= 6 and sys.argv[5] else ""
+
     # Read body from stdin
     body_bytes = b""
     try:
@@ -117,10 +121,15 @@ def main():
         print(json.dumps({"error": f"No 'handler' class in {script_name}.py"}))
         sys.exit(0)
 
-    # Build the full path with query string
-    path = f"/api/{script_name}"
-    if query_string:
-        path += query_string
+    # Build the full path for the handler.  Use the original full path (argv[5])
+    # when available so sub-path handlers (e.g. memwal at /api/memwal/remember)
+    # see the complete path.  Fall back to reconstructing from script_name.
+    if full_path_and_query:
+        path = full_path_and_query
+    else:
+        path = f"/api/{script_name}"
+        if query_string:
+            path += query_string
 
     method_upper = method.upper()
 

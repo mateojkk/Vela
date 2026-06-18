@@ -207,6 +207,7 @@ export default function MemoryMap() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [pulse, setPulse] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const healthRef = useRef<{ ok: boolean; message: string } | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Memory["type"] | "all">("all");
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
@@ -239,6 +240,29 @@ export default function MemoryMap() {
     }
     return points;
   }, [memories]);
+
+  // Relayer health check
+  useEffect(() => {
+    if (!isOwner || !memwal) return;
+    let cancelled = false;
+    healthRef.current = null;
+    memwal
+      .health()
+      .then((h) => {
+        if (cancelled) return;
+        healthRef.current = { ok: true, message: `Relayer ${h.version} ${h.mode || ""}`.trim() };
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        healthRef.current = {
+          ok: false,
+          message: err instanceof Error ? err.message : String(err),
+        };
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner, memwal]);
 
   useEffect(() => {
     if (!isOwner || !memwal) return;
