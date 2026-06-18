@@ -39,6 +39,9 @@ def get_todays_fixtures():
         return []
     groups = group_events_by_match(events)
     fixtures = []
+    
+    now_date = datetime.now(timezone.utc).date()
+    
     for g in groups:
         if not g.get("match"):
             continue
@@ -47,6 +50,16 @@ def get_todays_fixtures():
             gst = m.get("game_start_time") or ""
             if gst and (not kickoff or gst < kickoff):
                 kickoff = gst
+                
+        if kickoff:
+            try:
+                ts = datetime.fromisoformat(kickoff.replace("Z", "+00:00"))
+                # Filter strictly for today's matches
+                if ts.date() != now_date:
+                    continue
+            except Exception:
+                continue
+                
         fixtures.append({
             "home": g["match"]["home"],
             "away": g["match"]["away"],
@@ -55,16 +68,19 @@ def get_todays_fixtures():
     return fixtures
 
 
-def _format_vela_record(vela_predictions: list[str]) -> dict | None:
-    if not vela_predictions:
-        return None
-    total = len(vela_predictions)
-    correct = sum(1 for t in vela_predictions if "correct" in t.lower())
-    return {
-        "correct": correct,
-        "total": total,
-        "accuracy": round(correct / total * 100, 1) if total > 0 else 0,
-    }
+def _fetch_vela_record(supabase) -> dict | None:
+    try:
+        lb = supabase.table("leaderboard").select("correct, total_predictions, accuracy_pct").eq("user_id", "vela").execute()
+        if lb.data:
+            r = lb.data[0]
+            return {
+                "correct": r.get("correct", 0),
+                "total": r.get("total_predictions", 0),
+                "accuracy": r.get("accuracy_pct", 0)
+            }
+    except Exception:
+        pass
+    return None
 
 
 async def build_context(memory_context: dict | None, user_email: str, conversation_history: list):
@@ -121,8 +137,7 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
     recent_texts = (memory_context or {}).get("recent_memories", [])
     failed_preds = (memory_context or {}).get("failed_predictions", [])
     user_opinions = (memory_context or {}).get("user_opinions", [])
-    vela_predictions = (memory_context or {}).get("vela_predictions", [])
-    vela_record = _format_vela_record(vela_predictions)
+    vela_record = _fetch_vela_record(supabase)
 
     parts = []
     if display_name:

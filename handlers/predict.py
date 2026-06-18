@@ -93,6 +93,53 @@ class handler(BaseHTTPRequestHandler):
                 "outcome": None,
             }).execute()
 
+            if vela_pick:
+                # Ensure the 'vela' user exists in the DB (ignore error if it already does)
+                try:
+                    supabase.table("users").insert({
+                        "id": "vela",
+                        "email": "vela@vela.ai",
+                        "username": "vela",
+                        "display_name": "Vela AI"
+                    }).execute()
+                except Exception:
+                    pass
+                
+                # Insert Vela's own prediction
+                try:
+                    vela_pred_id = f"pred_v_{uuid.uuid4().hex[:10]}"
+                    supabase.table("predictions").insert({
+                        "id": vela_pred_id,
+                        "user_id": "vela",
+                        "type": prediction_type,
+                        "external_id": external_id or "",
+                        "user_pick": vela_pick,
+                        "confidence": max(1, confidence - 2),
+                        "home_team": home_team or None,
+                        "away_team": away_team or None,
+                        "question": question or None,
+                        "take": None,
+                        "resolved": False,
+                        "outcome": None,
+                    }).execute()
+
+                    # Initialize Vela's leaderboard entry if missing, or increment
+                    vela_lb = supabase.table("leaderboard").select("total_predictions").eq("user_id", "vela").execute()
+                    if not vela_lb.data:
+                        supabase.table("leaderboard").insert({
+                            "user_id": "vela",
+                            "username": "vela",
+                            "total_predictions": 1,
+                            "correct": 0,
+                            "accuracy_pct": 0,
+                            "rank": 999,
+                        }).execute()
+                    else:
+                        v_total = vela_lb.data[0]["total_predictions"] + 1
+                        supabase.table("leaderboard").update({"total_predictions": v_total}).eq("user_id", "vela").execute()
+                except Exception as e:
+                    print(f"Failed to track Vela's prediction: {e}")
+
             current = supabase.table("leaderboard").select("total_predictions").eq("user_id", user_id).execute()
             if not current.data:
                 user_info = supabase.table("users").select("username").eq("id", user_id).execute()
