@@ -21,17 +21,28 @@ interface MatchFixture {
 }
 
 function formatKickoff(iso: string): string {
-  if (!iso) return "";
+  if (!iso) return "TBD";
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
+  if (isNaN(d.getTime())) return "TBD";
   const now = new Date();
   const diff = d.getTime() - now.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days < 0) return "";
   if (days === 0) return "Today";
   if (days === 1) return "Tomorrow";
+  if (days < -1) return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   if (days < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function deriveMatchStatus(kickoff: string): "TIMED" | "LIVE" | "FT" {
+  if (!kickoff) return "TIMED";
+  const d = new Date(kickoff);
+  if (isNaN(d.getTime())) return "TIMED";
+  const now = Date.now();
+  const diff = now - d.getTime();
+  if (diff > 3 * 60 * 60 * 1000) return "FT";
+  if (diff > 0) return "LIVE";
+  return "TIMED";
 }
 
 export default function Feed() {
@@ -75,7 +86,7 @@ export default function Feed() {
 
   const trending = filteredMarkets.slice(0, 10);
 
-  // Build fixtures view from match groups
+  // Build fixtures view from match groups (hide matches that finished >3h ago).
   const fixtures: MatchFixture[] = useMemo(
     () =>
       matchGroups
@@ -88,11 +99,12 @@ export default function Feed() {
           home_code: g.match!.home.slice(0, 3).toUpperCase(),
           away_code: g.match!.away.slice(0, 3).toUpperCase(),
           kickoff: g.markets[0]?.game_start_time || g.end_date || "",
-          status: "TIMED",
+          status: deriveMatchStatus(g.markets[0]?.game_start_time || g.end_date || ""),
           group: undefined,
           matchday: undefined,
           markets: g.markets,
-        })),
+        }))
+        .filter((f) => f.status !== "FT"),
     [matchGroups]
   );
 
@@ -154,8 +166,12 @@ export default function Feed() {
                 className="rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-muted-foreground/40"
               >
                 <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-[10px] font-bold tracking-wider text-primary">
-                    UPCOMING
+                  <span
+                    className={`text-[10px] font-bold tracking-wider ${
+                      f.status === "LIVE" ? "text-danger" : "text-primary"
+                    }`}
+                  >
+                    {f.status === "LIVE" ? "LIVE" : "UPCOMING"}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     {f.kickoff ? formatKickoff(f.kickoff) : "TBD"}

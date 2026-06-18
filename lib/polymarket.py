@@ -11,6 +11,7 @@ import re
 import time
 import urllib.request
 import urllib.error
+from datetime import datetime, timedelta, timezone
 
 GAMMA_API = "https://gamma-api.polymarket.com"
 WC_TAG_SLUG = "fifa-world-cup"
@@ -199,6 +200,25 @@ def group_events_by_match(events: list) -> list:
     return out
 
 
+def _match_status(kickoff: str) -> str:
+    """Derive a fixture status from its kickoff time.
+
+    Treats matches as completed 3 hours after kickoff (rough full-match window).
+    """
+    if not kickoff:
+        return "TIMED"
+    try:
+        ko = datetime.fromisoformat(kickoff.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if now > ko + timedelta(hours=3):
+            return "FT"
+        if now > ko:
+            return "LIVE"
+        return "TIMED"
+    except Exception:
+        return "TIMED"
+
+
 def extract_fixtures_from_groups(groups: list) -> list:
     """
     Build fixture objects (one per match group) suitable for the /fixtures endpoint.
@@ -242,7 +262,7 @@ def extract_fixtures_from_groups(groups: list) -> list:
             "home_code": code(home),
             "away_code": code(away),
             "kickoff": kickoff,
-            "status": "TIMED",
+            "status": _match_status(kickoff),
             "group": group_label,
             "matchday": None,
             "markets": [
