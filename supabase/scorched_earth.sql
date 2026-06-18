@@ -10,11 +10,7 @@
 
 begin;
 
-truncate table chat_messages;
-truncate table chat_sessions;
-truncate table predictions;
-truncate table leaderboard;
-truncate table users;
+truncate table chat_messages, chat_sessions, predictions, leaderboard, users cascade;
 
 -- Prevent the same wallet/username from being claimed twice in the future,
 -- regardless of casing.
