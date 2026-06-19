@@ -303,8 +303,8 @@ def fetch_resolved_market_outcomes(ids: list[str]) -> dict[str, str]:
         # The Gamma /markets endpoint supports filtering by conditionId via comma list.
         id_param = ",".join(batch)
         url = (
-            f"{GAMMA_API}/markets?active=false&closed=true&limit={len(batch)}"
-            f"&order=endDate&ascending=false&condition_ids={id_param}"
+            f"{GAMMA_API}/markets?limit={len(batch)}"
+            f"&condition_ids={id_param}"
         )
         data = _http_get_json(url, timeout=12)
         if not isinstance(data, list):
@@ -322,10 +322,6 @@ def fetch_resolved_market_outcomes(ids: list[str]) -> dict[str, str]:
 
 def _extract_resolved_outcome(m: dict) -> str | None:
     """Return 'Yes' / 'No' for a resolved market, or None if still open."""
-    # If the market is still active and not closed, skip.
-    if not m.get("closed") and m.get("active", True):
-        return None
-
     # Explicit UMA resolution result is the strongest signal.
     uma_status = (m.get("umaResolutionStatus") or "").lower()
     uma_resolution = (m.get("umaResolution") or "").strip()

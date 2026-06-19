@@ -62,6 +62,8 @@ export interface MarketSubMarket {
   image?: string;
   end_date?: string;
   game_start_time?: string;
+  closed?: boolean;
+  active?: boolean;
 }
 
 export interface MarketGroup {

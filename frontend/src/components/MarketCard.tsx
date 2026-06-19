@@ -35,11 +35,23 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
   const primary = group.markets[0];
   const prob = primary?.yes_price ?? 0;
   const color = probColor(prob);
+  
+  const isStarted = group.markets.some((m) => {
+    if (!m.game_start_time) return false;
+    return new Date(m.game_start_time).getTime() < Date.now();
+  });
+  const isClosed = group.markets.some((m) => m.closed || !m.active);
+  const isLocked = isStarted || isClosed;
 
   return (
     <button
-      onClick={onClick}
-      className="group w-full rounded-md border border-border bg-card p-3 text-left transition-colors active:scale-[0.99] hover:border-muted-foreground/40 hover:bg-accent md:p-4"
+      onClick={isLocked ? undefined : onClick}
+      disabled={isLocked}
+      className={`group w-full rounded-md border border-border p-3 text-left transition-colors md:p-4 ${
+        isLocked
+          ? "bg-card/50 cursor-not-allowed opacity-60"
+          : "bg-card active:scale-[0.99] hover:border-muted-foreground/40 hover:bg-accent"
+      }`}
     >
       <div className="flex items-start gap-3">
         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-border bg-background md:h-14 md:w-14">
@@ -47,13 +59,13 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
             <img
               src={group.image}
               alt=""
-              className="h-full w-full object-cover"
+              className={`h-full w-full object-cover ${isLocked ? "grayscale" : ""}`}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-lg md:text-xl">
+            <div className={`flex h-full w-full items-center justify-center text-lg md:text-xl ${isLocked ? "grayscale opacity-50" : ""}`}>
               ⚽
             </div>
           )}
@@ -76,7 +88,7 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
           </div>
         </div>
 
-        <div className={`shrink-0 text-xl font-bold tabular-nums md:text-2xl ${color}`}>
+        <div className={`shrink-0 text-xl font-bold tabular-nums md:text-2xl ${isLocked ? "text-muted-foreground" : color}`}>
           {formatProb(prob)}
         </div>
       </div>
@@ -85,9 +97,15 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
         <span className="text-[10px] text-muted-foreground md:text-xs">
           {formatVolume(group.volume)} vol
         </span>
-        <span className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-foreground transition-colors group-hover:border-muted-foreground/40 group-hover:bg-accent md:px-3 md:text-xs">
-          Predict
-        </span>
+        {isLocked ? (
+          <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground md:px-3 md:text-xs">
+            {isClosed ? "Closed" : "Started"}
+          </span>
+        ) : (
+          <span className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-foreground transition-colors group-hover:border-muted-foreground/40 group-hover:bg-accent md:px-3 md:text-xs">
+            Predict
+          </span>
+        )}
       </div>
     </button>
   );
