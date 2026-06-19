@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { toBlob } from "html-to-image";
+import { toBlob, toPng } from "html-to-image";
 
 interface Props {
   prediction: {
@@ -22,6 +22,7 @@ export default function ShareImageModal({ prediction, username, displayName, ava
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [scale, setScale] = useState(1);
+  const [generatedDataUrl, setGeneratedDataUrl] = useState<string | null>(null);
 
   const isMatch = prediction.type === "match" && prediction.home_team && prediction.away_team;
   const name = displayName || `@${username}`;
@@ -65,9 +66,33 @@ export default function ShareImageModal({ prediction, username, displayName, ava
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Pre-generate image for wallet browsers so users can long-press it
+  useEffect(() => {
+    let mounted = true;
+    async function generate() {
+      if (!cardRef.current) return;
+      await new Promise(r => setTimeout(r, 150)); // let fonts load
+      try {
+        const url = await toPng(cardRef.current, { 
+          cacheBust: true, 
+          pixelRatio: 2, 
+          backgroundColor: "#ffffff",
+          style: { transform: "scale(1)" }
+        });
+        if (mounted) setGeneratedDataUrl(url);
+      } catch (e) {
+        console.error("Failed to pre-generate image:", e);
+      }
+    }
+    generate();
+    return () => { mounted = false; };
+  }, [avatarUrl]);
+
   async function captureBlob() {
+    if (generatedDataUrl) {
+      return await (await fetch(generatedDataUrl)).blob();
+    }
     if (!cardRef.current) return null;
-    // html-to-image options: override any CSS transform during capture
     return toBlob(cardRef.current, { 
       cacheBust: true, 
       pixelRatio: 2, 
@@ -130,14 +155,21 @@ export default function ShareImageModal({ prediction, username, displayName, ava
       {/* Scaled container for mobile viewing */}
       <div style={{ width: "600px", transform: `scale(${scale})`, transformOrigin: "center top" }} onClick={(e) => e.stopPropagation()}>
         
+        {generatedDataUrl && (
+          <img src={generatedDataUrl} alt="Prediction" style={{ width: "600px", borderRadius: "24px", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", display: "block" }} />
+        )}
+
         {/* ─── HORIZONTAL CARD (captured) ─── */}
+        {/* We keep it in the DOM but hide it visually once generated, so we don't flash, and we can still generate it */}
         <div ref={cardRef} style={{
           width: "600px", // Strict horizontal width
           background: "#ffffff",
           padding: "32px",
           borderRadius: "24px",
           fontFamily: font,
-          position: "relative",
+          position: generatedDataUrl ? "absolute" : "relative",
+          visibility: generatedDataUrl ? "hidden" : "visible",
+          pointerEvents: generatedDataUrl ? "none" : "auto",
           overflow: "hidden",
           border: "1px solid rgba(0,0,0,0.08)",
           boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
@@ -213,6 +245,12 @@ export default function ShareImageModal({ prediction, username, displayName, ava
           </div>
         </div>
       </div>
+
+      {generatedDataUrl && (
+        <div style={{ width: "100%", maxWidth: "600px", marginTop: "16px", textAlign: "center", fontSize: "12px", color: "#94a3b8", fontFamily: font }}>
+          Tip: You can long-press the image to save it.
+        </div>
+      )}
 
       {/* Action buttons (outside scaled wrapper) */}
       <div style={{ width: "100%", maxWidth: "600px", marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }} onClick={(e) => e.stopPropagation()}>
