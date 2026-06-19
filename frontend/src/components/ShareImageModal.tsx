@@ -67,18 +67,30 @@ export default function ShareImageModal({ prediction, username, displayName, ava
         cacheBust: true,
         backgroundColor: "#0e0e0f",
       });
-      if (blob) {
+      if (!blob) return;
+
+      const filename = `vela-prediction-${prediction.id}.png`;
+      const file = new File([blob], filename, { type: "image/png" });
+
+      // On mobile: use Web Share API (lets users save to Photos / share to apps)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "My Vela Prediction" });
+      } else {
+        // Desktop: anchor download
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `vela-prediction-${prediction.id}.png`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
     } catch (e) {
-      console.error("Failed to download image", e);
+      // Silently ignore if user cancelled the share sheet
+      if (e instanceof Error && e.name !== "AbortError") {
+        console.error("Failed to share/download image", e);
+      }
     } finally {
       setDownloading(false);
     }
@@ -164,7 +176,7 @@ export default function ShareImageModal({ prediction, username, displayName, ava
             disabled={downloading}
             className="w-full flex justify-center items-center gap-2 rounded-md bg-primary text-background py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {downloading ? "Saving..." : "Download"}
+            {downloading ? "Saving…" : "Save / Share"}
           </button>
         </div>
       </div>

@@ -52,11 +52,8 @@ export default function Profile() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
-  const [resetting, setResetting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState("");
-  const [resetConfirm, setResetConfirm] = useState(false);
-  const [resetMessage, setResetMessage] = useState("");
   const [sharePrediction, setSharePrediction] = useState<ProfileData["recent_predictions"][0] | null>(null);
 
   const { data, isLoading } = useQuery<ProfileData>({
@@ -92,30 +89,6 @@ export default function Profile() {
 
   const { user, record, recent_predictions, recent_chats } = data;
 
-  async function handleReset() {
-    if (!authUser?.email) return;
-    setResetting(true);
-    setResetMessage("");
-    try {
-      const res = await apiPost<{
-        deleted: { chat_sessions: number; predictions: number };
-        note: string;
-      }>("/reset", { email: authUser.email, confirm: true });
-      setResetMessage(
-        `Cleared ${res.deleted.chat_sessions} chat(s) and ${res.deleted.predictions} prediction(s).`
-      );
-      setResetConfirm(false);
-      queryClient.invalidateQueries({ queryKey: ["profile", username] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["chat"] });
-    } catch (err) {
-      setResetMessage(
-        err instanceof Error ? err.message : "Reset failed"
-      );
-    } finally {
-      setResetting(false);
-    }
-  }
 
   async function handleCheckResolutions() {
     setChecking(true);
@@ -173,12 +146,6 @@ export default function Profile() {
                   title="Refresh resolved predictions"
                 >
                   {checking ? "…" : "Refresh"}
-                </button>
-                <button
-                  onClick={() => setResetConfirm(true)}
-                  className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-danger hover:border-danger/60 hover:bg-danger/10 md:px-3 md:text-xs"
-                >
-                  Reset
                 </button>
               </div>
             )}
@@ -353,45 +320,6 @@ export default function Profile() {
         </section>
       )}
 
-      {resetConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
-          onClick={() => setResetConfirm(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-t-md border border-border bg-card p-5 sm:rounded-md sm:p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="mb-2 text-lg font-semibold text-foreground">
-              Reset?
-            </h2>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Deletes chats and predictions. Profile stays.
-            </p>
-            {resetMessage && (
-              <p className="mb-3 rounded-md border border-border bg-background p-2 text-xs text-foreground">
-                {resetMessage}
-              </p>
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setResetConfirm(false)}
-                className="flex-1 rounded-md border border-border bg-background py-2.5 text-sm text-muted-foreground hover:border-muted-foreground/40"
-                disabled={resetting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReset}
-                disabled={resetting}
-                className="flex-1 rounded-md border border-danger/40 bg-danger/10 py-2.5 text-sm font-medium text-danger hover:bg-danger/20 disabled:opacity-50"
-              >
-                {resetting ? "Resetting..." : "Yes, reset"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {sharePrediction && (
         <ShareImageModal
