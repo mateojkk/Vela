@@ -17,40 +17,49 @@ interface Props {
   onClose: () => void;
 }
 
+const STATUS = {
+  correct: { label: "WON ✓", bg: "#052e16", color: "#4ade80", border: "#166534" },
+  incorrect: { label: "LOST ✗", bg: "#2d0a0a", color: "#f87171", border: "#7f1d1d" },
+  pending: { label: "PENDING", bg: "#0f172a", color: "#94a3b8", border: "#334155" },
+};
+
 export default function ShareImageModal({ prediction, username, displayName, avatarUrl, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   const isMatch = prediction.type === "match" && prediction.home_team && prediction.away_team;
-  const context = isMatch
-    ? `${prediction.home_team} vs ${prediction.away_team}`
-    : prediction.question || (prediction.type === "match" ? "Match" : "Market");
-
   const name = displayName || `@${username}`;
+  const status = prediction.outcome === "correct"
+    ? STATUS.correct
+    : prediction.outcome === "incorrect"
+    ? STATUS.incorrect
+    : STATUS.pending;
 
-  // Preload fonts/images to ensure html-to-image captures them correctly
   useEffect(() => {
     if (avatarUrl) {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.src = avatarUrl;
     }
   }, [avatarUrl]);
 
+  async function captureBlob() {
+    if (!cardRef.current) return null;
+    // Wait a tick to ensure DOM paint
+    await new Promise((r) => setTimeout(r, 100));
+    return toBlob(cardRef.current, {
+      cacheBust: true,
+      backgroundColor: "#060609",
+      pixelRatio: 2,
+    });
+  }
+
   async function handleCopy() {
-    if (!cardRef.current) return;
     try {
-      const blob = await toBlob(cardRef.current, {
-        cacheBust: true,
-        backgroundColor: "#0e0e0f",
-        style: { transform: "scale(1)", transformOrigin: "top left" },
-        width: cardRef.current.offsetWidth,
-        height: cardRef.current.offsetHeight,
-      });
+      const blob = await captureBlob();
       if (blob) {
-        await navigator.clipboard.write([
-          new ClipboardItem({ "image/png": blob }),
-        ]);
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }
@@ -60,23 +69,15 @@ export default function ShareImageModal({ prediction, username, displayName, ava
   }
 
   async function handleDownload() {
-    if (!cardRef.current) return;
     setDownloading(true);
     try {
-      const blob = await toBlob(cardRef.current, {
-        cacheBust: true,
-        backgroundColor: "#0e0e0f",
-      });
+      const blob = await captureBlob();
       if (!blob) return;
-
       const filename = `vela-prediction-${prediction.id}.png`;
       const file = new File([blob], filename, { type: "image/png" });
-
-      // On mobile: use Web Share API (lets users save to Photos / share to apps)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: "My Vela Prediction" });
       } else {
-        // Desktop: anchor download
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -87,7 +88,6 @@ export default function ShareImageModal({ prediction, username, displayName, ava
         URL.revokeObjectURL(url);
       }
     } catch (e) {
-      // Silently ignore if user cancelled the share sheet
       if (e instanceof Error && e.name !== "AbortError") {
         console.error("Failed to share/download image", e);
       }
@@ -98,83 +98,156 @@ export default function ShareImageModal({ prediction, username, displayName, ava
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", padding: "16px" }}
       onClick={onClose}
     >
-      <div
-        className="w-full max-w-md flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-foreground">Share Prediction</h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            ✕
-          </button>
+      <div style={{ width: "100%", maxWidth: "440px", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#f1f5f9", margin: 0 }}>Share Prediction</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "18px", lineHeight: 1 }}>✕</button>
         </div>
 
-        {/* The Card to be captured */}
-        <div className="bg-[#0e0e0f] p-4 rounded-xl shadow-2xl border border-border" ref={cardRef}>
-          <div className="bg-card border border-border rounded-lg p-6 relative overflow-hidden">
-            {/* Background embellishment */}
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 blur-3xl rounded-full" />
-            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent/20 blur-3xl rounded-full" />
+        {/* ── Card captured as image ── */}
+        <div
+          ref={cardRef}
+          style={{
+            background: "linear-gradient(135deg, #0c0c14 0%, #0f111a 100%)",
+            padding: "32px 24px 24px",
+            borderRadius: "16px",
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Dot grid background */}
+          <div style={{
+            position: "absolute", inset: 0,
+            backgroundImage: "radial-gradient(circle, #7dd3fc18 1px, transparent 1px)",
+            backgroundSize: "20px 20px",
+          }} />
 
-            <div className="relative z-10 flex flex-col gap-6">
-              <div className="flex items-center gap-3">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full border-2 border-background object-cover" crossOrigin="anonymous" />
+          {/* Glow */}
+          <div style={{ position: "absolute", top: "-60px", right: "-60px", width: "200px", height: "200px", background: "radial-gradient(circle, #7dd3fc22, transparent 70%)", borderRadius: "50%" }} />
+          <div style={{ position: "absolute", bottom: "-80px", left: "-40px", width: "180px", height: "180px", background: "radial-gradient(circle, #38bdf820, transparent 70%)", borderRadius: "50%" }} />
+
+          {/* Floating user pill at top center */}
+          <div style={{ position: "absolute", top: "-18px", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "8px", background: "#1e2130", border: "1.5px solid #2d3348", borderRadius: "999px", padding: "4px 14px 4px 6px", boxShadow: "0 4px 20px #0008" }}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" crossOrigin="anonymous" style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover", border: "1.5px solid #7dd3fc" }} />
+            ) : (
+              <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#7dd3fc", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "12px", color: "#0c0c14" }}>
+                {name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "#f1f5f9", whiteSpace: "nowrap" }}>{name}</span>
+          </div>
+
+          {/* Ticket body */}
+          <div style={{
+            display: "flex",
+            background: "#14161f",
+            border: "1px solid #1e2235",
+            borderRadius: "12px",
+            overflow: "hidden",
+            marginTop: "8px",
+            position: "relative",
+            zIndex: 1,
+          }}>
+            {/* Left panel — match info */}
+            <div style={{ flex: 1, padding: "20px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "16px" }}>
+              {/* Sport icon */}
+              <div style={{ fontSize: "28px", lineHeight: 1 }}>⚽</div>
+
+              <div>
+                <div style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7dd3fc", marginBottom: "8px" }}>
+                  World Cup 2026
+                </div>
+                {isMatch ? (
+                  <>
+                    <div style={{ fontSize: "16px", fontWeight: 800, color: "#f1f5f9", lineHeight: 1.25 }}>
+                      {prediction.home_team}
+                    </div>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "#475569", margin: "4px 0", letterSpacing: "0.06em" }}>VS</div>
+                    <div style={{ fontSize: "16px", fontWeight: 800, color: "#f1f5f9", lineHeight: 1.25 }}>
+                      {prediction.away_team}
+                    </div>
+                  </>
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-foreground">
-                    {name.charAt(0).toUpperCase()}
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#f1f5f9", lineHeight: 1.4 }}>
+                    {prediction.question}
                   </div>
                 )}
-                <div>
-                  <div className="font-bold text-foreground text-sm leading-tight">{name}</div>
-                  <div className="text-xs text-muted-foreground">@{username} on Vela</div>
+              </div>
+            </div>
+
+            {/* Perforated divider */}
+            <div style={{ width: "1px", position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              {/* Top notch */}
+              <div style={{ position: "absolute", top: "-13px", left: "50%", transform: "translateX(-50%)", width: "26px", height: "26px", borderRadius: "50%", background: "linear-gradient(135deg, #0c0c14, #0f111a)" }} />
+              {/* Bottom notch */}
+              <div style={{ position: "absolute", bottom: "-13px", left: "50%", transform: "translateX(-50%)", width: "26px", height: "26px", borderRadius: "50%", background: "linear-gradient(135deg, #0c0c14, #0f111a)" }} />
+              {/* Dashed line */}
+              <div style={{ width: "1px", height: "100%", backgroundImage: "repeating-linear-gradient(to bottom, #2d3348 0px, #2d3348 5px, transparent 5px, transparent 10px)" }} />
+            </div>
+
+            {/* Right panel — pick + status */}
+            <div style={{ width: "140px", flexShrink: 0, padding: "20px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#475569", marginBottom: "6px" }}>
+                  My Pick
+                </div>
+                <div style={{ fontSize: "22px", fontWeight: 900, color: "#7dd3fc", lineHeight: 1.15, wordBreak: "break-word" }}>
+                  {prediction.user_pick}
                 </div>
               </div>
 
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">
-                  World Cup 2026 Call
+                <div style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#475569", marginBottom: "6px" }}>
+                  Result
                 </div>
-                <h2 className="text-xl md:text-2xl font-black text-foreground leading-tight mb-4">
-                  {context}
-                </h2>
-                <div className="inline-flex flex-col border-l-2 border-primary pl-3 py-1">
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Pick</span>
-                  <span className="text-lg font-bold text-foreground">{prediction.user_pick}</span>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-border flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <img src="/vela.jpg" alt="Vela logo" className="w-6 h-6 rounded-md" />
-                  <span className="font-bold text-sm tracking-widest uppercase">Vela</span>
-                </div>
-                <div className={`text-xs font-bold uppercase tracking-widest px-2 py-1 rounded bg-background border ${prediction.outcome === "correct" ? "text-success border-success/30" : prediction.outcome === "incorrect" ? "text-danger border-danger/30" : "text-muted-foreground border-border"}`}>
-                  {prediction.outcome === "correct" ? "Won" : prediction.outcome === "incorrect" ? "Lost" : "Pending"}
+                <div style={{
+                  display: "inline-block",
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  fontSize: "10px",
+                  fontWeight: 800,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  background: status.bg,
+                  color: status.color,
+                  border: `1px solid ${status.border}`,
+                }}>
+                  {status.label}
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Footer — Vela brand */}
+          <div style={{ marginTop: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <img src="/vela.jpg" alt="Vela" style={{ width: "22px", height: "22px", borderRadius: "6px" }} />
+              <span style={{ fontSize: "13px", fontWeight: 800, color: "#7dd3fc", letterSpacing: "0.15em", textTransform: "uppercase" }}>Vela</span>
+            </div>
+            <div style={{ fontSize: "10px", color: "#334155", fontWeight: 500, letterSpacing: "0.06em" }}>
+              vela-wc.vercel.app
+            </div>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        {/* Action buttons */}
+        <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <button
             onClick={handleCopy}
-            className="w-full flex justify-center items-center gap-2 rounded-md bg-accent text-foreground py-2.5 text-sm font-semibold hover:bg-accent/80 transition-colors"
+            style={{ padding: "12px", borderRadius: "8px", border: "1px solid #1e2235", background: "#14161f", color: "#f1f5f9", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
           >
-            {copied ? "Copied!" : "Copy Image"}
+            {copied ? "Copied ✓" : "Copy Image"}
           </button>
           <button
             onClick={handleDownload}
             disabled={downloading}
-            className="w-full flex justify-center items-center gap-2 rounded-md bg-primary text-background py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            style={{ padding: "12px", borderRadius: "8px", border: "none", background: "#7dd3fc", color: "#0c0c14", fontSize: "13px", fontWeight: 700, cursor: "pointer", opacity: downloading ? 0.6 : 1 }}
           >
             {downloading ? "Saving…" : "Save / Share"}
           </button>
