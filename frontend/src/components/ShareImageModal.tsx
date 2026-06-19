@@ -101,7 +101,9 @@ export default function ShareImageModal({ prediction, username, displayName, ava
       const filename = `vela-${prediction.id}.png`;
       const file = new File([blob], filename, { type: "image/png" });
       
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: "My Vela Prediction" });
       } else {
         setGeneratedDataUrl(url);
