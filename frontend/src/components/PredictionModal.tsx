@@ -24,167 +24,22 @@ function buildOptionsForGroup(group: MarketGroup): OutcomeOption[] {
   const subs = group.markets || [];
 
   if (match) {
-    // Match-style market: "Brazil vs Portugal"
-    // - sub-markets of form "Will X win on DATE?" → option "X"
-    // - sub-market of form "Will X vs Y end in a draw?" → option "Draw"
-    const home = match.home;
-    const away = match.away;
-
     for (const m of subs) {
-      const q = m.question.toLowerCase();
-
-      // Draw?
-      if (q.includes("end in a draw") || q.includes("draw")) {
-        out.push({
-          id: `draw-${m.id}`,
-          label: "Draw",
-          subMarket: m,
-          side: "yes",
-          probability: m.yes_price,
-        });
-        continue;
+      // handlers/markets.py sets questions like "Home to Win", "Draw", "Away to Win"
+      let label = m.question;
+      if (label.endsWith(" to Win")) {
+        label = label.slice(0, -7);
       }
-
-      // Home win?
-      if (home && q.includes(`will ${home.toLowerCase()} win`)) {
-        out.push({
-          id: `home-${m.id}`,
-          label: home,
-          subMarket: m,
-          side: "yes",
-          probability: m.yes_price,
-        });
-        continue;
-      }
-
-      // Away win?
-      if (away && q.includes(`will ${away.toLowerCase()} win`)) {
-        out.push({
-          id: `away-${m.id}`,
-          label: away,
-          subMarket: m,
-          side: "yes",
-          probability: m.yes_price,
-        });
-        continue;
-      }
-
-      // Fallback: if question is generic, use it as label
-      if (q.startsWith("will ")) {
-        const cleaned = m.question
-          .replace(/^Will\s+/i, "")
-          .replace(/\s+on\s+\d{4}-\d{2}-\d{2}\?*$/i, "")
-          .replace(/\?$/, "")
-          .trim();
-        if (cleaned) {
-          out.push({
-            id: `custom-${m.id}`,
-            label: cleaned,
-            subMarket: m,
-            side: "yes",
-            probability: m.yes_price,
-          });
-        }
-      }
-    }
-
-    // If parsing didn't find home/away wins, fall back to two Yes/No from the
-    // first sub-market (still uses team names as labels).
-    if (out.length === 0 && home && away && subs[0]) {
-      out.push(
-        {
-          id: `home-fallback-${subs[0].id}`,
-          label: home,
-          subMarket: subs[0],
-          side: "yes",
-          probability: subs[0].yes_price,
-        },
-        {
-          id: `away-fallback-${subs[0].id}`,
-          label: away,
-          subMarket: subs[0],
-          side: "no",
-          probability: subs[0].no_price,
-        }
-      );
-    }
-  } else {
-    // Non-match market.
-    // - If there are multiple sub-markets, treat each as an outcome option
-    //   (e.g. "Will Europe win the WC?", "Will South America win the WC?").
-    // - Otherwise fall back to a single Yes / No market.
-    if (subs.length > 1) {
-      for (const m of subs) {
-        const label = extractOptionLabel(m.question);
-        if (label) {
-          out.push({
-            id: `opt-${m.id}`,
-            label,
-            subMarket: m,
-            side: "yes",
-            probability: m.yes_price,
-          });
-        }
-      }
-    }
-
-    if (out.length === 0 && subs[0]) {
-      out.push(
-        {
-          id: `yes-${subs[0].id}`,
-          label: "Yes",
-          subMarket: subs[0],
-          side: "yes",
-          probability: subs[0].yes_price,
-        },
-        {
-          id: `no-${subs[0].id}`,
-          label: "No",
-          subMarket: subs[0],
-          side: "no",
-          probability: subs[0].no_price,
-        }
-      );
+      out.push({
+        id: m.id,
+        label,
+        subMarket: m,
+        side: "yes",
+        probability: m.yes_price,
+      });
     }
   }
-
   return out;
-}
-
-/**
- * Extract a short option label from a Polymarket question like
- * "Will Europe win the 2026 FIFA World Cup?" → "Europe".
- */
-function extractOptionLabel(question: string): string | null {
-  const q = question.trim();
-  if (!q) return null;
-
-  // "Will <subject> win ...?"
-  const winMatch = q.match(/^Will\s+(.+?)\s+win\b/i);
-  if (winMatch) return winMatch[1].trim();
-
-  // "Will the winner come from <subject>?"
-  const fromMatch = q.match(/^Will\s+(?:the\s+)?winner\s+come\s+from\s+(.+?)\??$/i);
-  if (fromMatch) return fromMatch[1].trim();
-
-  // "Will <subject> be ...?"
-  const beMatch = q.match(/^Will\s+(.+?)\s+be\b/i);
-  if (beMatch) return beMatch[1].trim();
-
-  // Generic "Will <rest>?" fallback — trim trailing prepositional clauses.
-  const genericMatch = q.match(/^Will\s+(.+?)\??$/i);
-  if (genericMatch) {
-    return genericMatch[1]
-      .replace(/\s+(?:win|be|make it|reach|come from)\s+.*$/i, "")
-      .replace(/\?$/, "")
-      .trim();
-  }
-
-  return q.replace(/\?$/, "").trim();
-}
-
-function formatCents(p: number): string {
-  return `${Math.round(p * 100)}¢`;
 }
 
 export default function PredictionModal({ marketGroup, user, onClose }: Props) {
@@ -306,11 +161,7 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
             {result.vela_pick && (
               <div className="mb-6 rounded-md border border-border bg-background p-3 text-left">
                 <p className="mb-1 text-xs text-muted-foreground">
-                  Vela agrees with{" "}
-                  <span className="font-semibold text-primary">
-                    {formatCents(selected?.probability ?? 0)}
-                  </span>{" "}
-                  confidence
+                  Vela agrees!
                 </p>
               </div>
             )}
@@ -347,7 +198,7 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
               <ShareButton
                 url={`${window.location.origin}/api/og?type=market&id=${encodeURIComponent(marketGroup.markets[0]?.id || marketGroup.id)}`}
                 title={marketGroup.question}
-                text={`${marketGroup.question} on Vela — currently ${formatCents(marketGroup.markets[0]?.yes_price ?? 0)} on Yes.`}
+                text={`${marketGroup.question} on Vela.`}
               />
             </div>
 
@@ -396,16 +247,7 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
                             : "border-border bg-background text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
                         }`}
                       >
-                        <div className="truncate">{opt.label}</div>
-                        <div
-                          className={`mt-1 text-[10px] font-mono tabular-nums ${
-                            selected?.id === opt.id
-                              ? "text-foreground"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {formatCents(opt.probability)}
-                        </div>
+                        <div className="truncate text-center">{opt.label}</div>
                       </button>
                     );
                   })}
@@ -413,28 +255,6 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
               )}
             </div>
 
-            {/* Sub-markets under this event */}
-            {!isMatch && marketGroup.markets.length > 1 && (
-              <div className="mb-4">
-                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Related markets
-                </div>
-                <div className="space-y-1.5">
-                  {marketGroup.markets.slice(0, 6).map((m) => (
-                    <div
-                      key={m.id}
-                      className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground"
-                    >
-                      <div className="truncate">{m.question}</div>
-                      <div className="mt-0.5 font-mono tabular-nums">
-                        Yes {formatCents(m.yes_price)} · No{" "}
-                        {formatCents(m.no_price)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="mb-4">
               <label className="mb-2 block text-sm text-muted-foreground">

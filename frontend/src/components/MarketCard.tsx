@@ -14,9 +14,7 @@ function formatEndDate(iso: string): string {
 }
 
 export default function MarketCard({ group, onClick }: MarketCardProps) {
-  // For match groups, use the first market's yes_price as the headline probability.
-  // For prediction groups, same thing — there's typically one main market.
-  const primary = group.markets[0];
+  if (!group.markets || group.markets.length === 0) return null;
   
   const isStarted = group.markets.some((m) => {
     if (!m.game_start_time) return false;

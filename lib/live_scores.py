@@ -44,8 +44,14 @@ def get_live_scores_text() -> str:
 
 def _normalize_team(name: str) -> str:
     import re
-    return re.sub(r'[^a-z0-9]', '', name.lower().replace('and', '').replace('republic', '').replace('the', ''))
-
+    norm = re.sub(r'[^a-z0-9]', '', name.lower().replace('and', '').replace('republic', '').replace('the', ''))
+    if norm in ["korea", "southkorea", "korearepublic"]:
+        return "southkorea"
+    if norm in ["usa", "unitedstates", "unitedstatesofamerica"]:
+        return "usa"
+    if norm in ["bosnia", "bosniah", "bosniaherzegovina"]:
+        return "bosniaherzegovina"
+    return norm
 def get_finished_matches() -> dict:
     """Returns a dict of {(norm_home, norm_away): 'home' | 'away' | 'draw'} for matches finished in the last 7 days."""
     api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
