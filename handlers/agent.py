@@ -186,7 +186,7 @@ async def build_context(memory_context: dict | None, user_email: str, conversati
                 except Exception:
                     pass
             lines.append(f"- {f['home']} {t}")
-        parts.append("Today's scheduled matches (via Polymarket):\n" + "\n".join(lines))
+        parts.append("Today's scheduled matches:\n" + "\n".join(lines))
         
     if isinstance(live_scores_text, str) and live_scores_text:
         parts.append(live_scores_text)

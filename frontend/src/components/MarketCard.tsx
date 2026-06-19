@@ -15,9 +15,10 @@ function formatEndDate(iso: string): string {
 
 export default function MarketCard({ group, onClick }: MarketCardProps) {
   if (!group.markets || group.markets.length === 0) return null;
-  
+
   const isStarted = group.markets.some((m) => {
     if (!m.game_start_time) return false;
+    // eslint-disable-next-line react-hooks/purity
     return new Date(m.game_start_time).getTime() < Date.now();
   });
   const isClosed = group.markets.some((m) => m.closed || !m.active);

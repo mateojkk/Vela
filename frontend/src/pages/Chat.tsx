@@ -244,7 +244,7 @@ export default function Chat() {
           });
         },
         // onDone — capture session id
-        (sessionId, _title) => {
+        (sessionId) => {
           finalSessionId = sessionId || activeSessionId;
         }
       );
