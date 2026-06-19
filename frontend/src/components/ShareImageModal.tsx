@@ -28,15 +28,18 @@ export default function ShareImageModal({ prediction, username, displayName, ava
   const outcome = prediction.outcome;
   const pickColor = outcome === "correct" ? "#00DD94" : outcome === "incorrect" ? "#ef4444" : "#00DD94";
   
-  // Status watermark
-  let watermarkText = "";
-  let watermarkColor = "";
+  // Status pill
+  let statusLabel = "PENDING";
+  let statusColor = "#64748b";
+  let statusBg = "rgba(0,0,0,0.05)";
   if (outcome === "correct") {
-    watermarkText = "WON ✓";
-    watermarkColor = "rgba(0, 221, 148, 0.15)";
+    statusLabel = "WON ✓";
+    statusColor = "#00DD94";
+    statusBg = "rgba(0, 221, 148, 0.15)";
   } else if (outcome === "incorrect") {
-    watermarkText = "LOST ✗";
-    watermarkColor = "rgba(239, 68, 68, 0.1)";
+    statusLabel = "LOST ✗";
+    statusColor = "#ef4444";
+    statusBg = "rgba(239, 68, 68, 0.1)";
   }
 
   useEffect(() => {
@@ -96,7 +99,7 @@ export default function ShareImageModal({ prediction, username, displayName, ava
       style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", padding: "16px" }}
       onClick={onClose}
     >
-      <div style={{ width: "100%", maxWidth: "380px" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ width: "100%", maxWidth: "540px" }} onClick={(e) => e.stopPropagation()}>
         
         {/* Modal header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -121,16 +124,7 @@ export default function ShareImageModal({ prediction, username, displayName, ava
           {/* Top left ambient */}
           <div style={{ position: "absolute", top: "-100px", left: "-100px", width: "300px", height: "300px", background: "radial-gradient(circle, rgba(0,0,0,0.03) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
 
-          {/* Status Watermark */}
-          {watermarkText && (
-            <div style={{
-              position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%) rotate(-15deg)",
-              fontSize: "90px", fontWeight: 900, color: watermarkColor,
-              whiteSpace: "nowrap", pointerEvents: "none", zIndex: 0, letterSpacing: "-0.05em"
-            }}>
-              {watermarkText}
-            </div>
-          )}
+
 
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "32px" }}>
             
@@ -177,10 +171,17 @@ export default function ShareImageModal({ prediction, username, displayName, ava
             </div>
 
             {/* The Pick */}
-            <div style={{ background: "#f8fafc", borderRadius: "16px", padding: "16px", border: "1px solid rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "8px" }}>
-              <span style={{ fontSize: "10px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em", textTransform: "uppercase" }}>Selected Pick</span>
-              <div style={{ fontSize: "32px", fontWeight: 300, color: pickColor, lineHeight: 1.1, letterSpacing: "-0.02em", wordBreak: "break-word" }}>
-                {prediction.user_pick}
+            <div style={{ background: "#f8fafc", borderRadius: "16px", padding: "24px", border: "1px solid rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em", textTransform: "uppercase" }}>Selected Pick</span>
+                <div style={{ fontSize: "36px", fontWeight: 300, color: pickColor, lineHeight: 1.1, letterSpacing: "-0.02em", wordBreak: "break-word" }}>
+                  {prediction.user_pick}
+                </div>
+              </div>
+              <div style={{ padding: "10px 20px", borderRadius: "12px", background: statusBg, border: `1px solid ${statusColor}40`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: "16px", fontWeight: 800, color: statusColor, letterSpacing: "0.08em" }}>
+                  {statusLabel}
+                </span>
               </div>
             </div>
 
