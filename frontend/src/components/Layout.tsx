@@ -26,6 +26,7 @@ export default function Layout({
 
   const nav = [
     { label: "Markets", href: "/feed" },
+    { label: "Live", href: "/live" },
     { label: "Chat", href: "/" },
     { label: "Leaderboard", href: "/leaderboard" },
     { label: "Memory", href: "/memory" },
