@@ -191,7 +191,7 @@ export default function Chat() {
     const unique = (arr: string[]) => Array.from(new Set(arr));
 
     return {
-      relevant_memories: unique([...relevant, ...recent, ...velaContext, ...vela]),
+      relevant_memories: unique([...relevant, ...recent, ...velaContext]),
       recent_memories: [], // Unused / merged into relevant
       failed_predictions: [],
       user_opinions: unique(opinions),

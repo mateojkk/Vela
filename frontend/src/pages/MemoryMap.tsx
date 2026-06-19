@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useMemWal } from "../hooks/useMemWal";
+import { apiGet } from "../lib/api";
 import Layout from "../components/Layout";
 
 interface Memory {
@@ -20,12 +21,14 @@ const PROBE_QUERIES = [
 
 function classifyMemory(text: string): Memory["type"] {
   const t = text.toLowerCase();
-  if (["wrong", "miss", "incorrect", "bad", "lost", "fail"].some((w) => t.includes(w))) return "miss";
-  if (["correct", "right", "won", "nailed", "good call"].some((w) => t.includes(w))) return "hit";
-  if (["predict", "pick", "chose", "bet", "call"].some((w) => t.includes(w))) return "prediction";
-  if (["think", "believe", "opinion", "take", "feel", "reckon"].some((w) => t.includes(w))) return "opinion";
-  if (["rival", "debate", "argue", "disagree"].some((w) => t.includes(w))) return "rivalry";
-  if (["goal", "match", "game", "fixture", "played"].some((w) => t.includes(w))) return "match";
+  const content = t.replace("user said:", "").replace("vela replied:", "").trim();
+  
+  if (["predict", "pick", "chose", "bet", "call"].some((w) => content.includes(w))) return "prediction";
+  if (["wrong", "miss", "incorrect", "bad", "lost", "fail"].some((w) => content.includes(w))) return "miss";
+  if (["correct", "right", "won", "nailed", "good call"].some((w) => content.includes(w))) return "hit";
+  if (["think", "believe", "opinion", "take", "feel", "reckon"].some((w) => content.includes(w))) return "opinion";
+  if (["rival", "debate", "argue", "disagree"].some((w) => content.includes(w))) return "rivalry";
+  if (["goal", "match", "game", "fixture", "played"].some((w) => content.includes(w))) return "match";
   return "memory";
 }
 
@@ -38,8 +41,8 @@ interface MemoryGroup {
 
 const TYPE_CONFIG: Record<Memory["type"], { color: string; label: string; description: string }> = {
   prediction: { color: "#38bdf8", label: "Predictions", description: "Calls you locked in" },
-  hit:        { color: "#3fe77e", label: "Wins",        description: "Calls you nailed" },
-  miss:       { color: "#ff5c5c", label: "Losses",      description: "Calls you got wrong" },
+  hit:        { color: "#3fe77e", label: "Good Calls",  description: "Calls you nailed" },
+  miss:       { color: "#ff5c5c", label: "Bad Calls",   description: "Calls you got wrong" },
   opinion:    { color: "#9a9cc4", label: "Opinions",    description: "Hot takes and beliefs" },
   rivalry:    { color: "#e0a878", label: "Rivalries",   description: "Debates and arguments" },
   match:      { color: "#3fe77e", label: "Matches",     description: "Games you discussed" },
@@ -211,10 +214,23 @@ export default function MemoryMap() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Memory["type"] | "all">("all");
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+  const [profileData, setProfileData] = useState<{ record?: { correct: number; total_predictions: number } } | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
   const animRef = useRef<number>(0);
   const rotYRef = useRef(0);
   const mouseRef = useRef({ x: 0, y: 0, dragging: false });
+
+  useEffect(() => {
+    const targetUser = username || user?.username;
+    if (!targetUser) return;
+    let cancelled = false;
+    apiGet(`/profile?username=${targetUser}`)
+      .then((data: any) => {
+        if (!cancelled) setProfileData(data);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [username, user?.username]);
 
   const globePoints = useMemo<GlobePoint[]>(() => {
     if (memories.length === 0) return [];
@@ -472,11 +488,11 @@ export default function MemoryMap() {
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Vela IQ</div>
           </div>
           <div className="rounded border border-border bg-card/80 p-3 text-center">
-            <div className="font-mono text-xl font-bold tabular-nums text-success">{counts.hit ?? 0}</div>
+            <div className="font-mono text-xl font-bold tabular-nums text-success">{profileData?.record?.correct ?? 0}</div>
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Wins</div>
           </div>
           <div className="rounded border border-border bg-card/80 p-3 text-center">
-            <div className="font-mono text-xl font-bold tabular-nums text-danger">{counts.miss ?? 0}</div>
+            <div className="font-mono text-xl font-bold tabular-nums text-danger">{Math.max(0, (profileData?.record?.total_predictions ?? 0) - (profileData?.record?.correct ?? 0))}</div>
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Losses</div>
           </div>
         </div>
