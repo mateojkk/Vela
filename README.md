@@ -18,7 +18,7 @@ Vela goes beyond simple text logging. We built an entirely on-chain memory archi
 * **Dynamic Personality**: Make terrible picks? Vela remembers them and will roast you in the chat. On a hot streak? Vela knows and hypes you up. Day 1, Vela is a stranger. By Day 30, Vela knows your betting patterns better than you do.
 
 ### 2. Creativity & Flair
-We actively pivoted away from generic "crypto betting" or "Polymarket clone" aesthetics to deliver a **premium, monolithic dark-mode experience**. 
+We actively pivoted away from generic "crypto betting" layouts to deliver a **premium, monolithic dark-mode experience**. 
 * **Sleek Share Cards**: When you make a prediction, Vela generates a stunning, dynamic "Share Card" with ambient lighting, glassmorphism, and giant watermarked "WON ✓" or "LOST ✗" stamps. 
 * **Mobile-First Sharing**: We optimized the architecture to natively support mobile wallet browsers (like Sui Wallet), seamlessly generating native images for easy long-press sharing and downloading.
 
