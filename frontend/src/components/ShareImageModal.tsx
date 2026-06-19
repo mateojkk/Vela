@@ -21,6 +21,7 @@ export default function ShareImageModal({ prediction, username, displayName, ava
   const cardRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [scale, setScale] = useState(1);
 
   const isMatch = prediction.type === "match" && prediction.home_team && prediction.away_team;
   const name = displayName || `@${username}`;
@@ -50,20 +51,41 @@ export default function ShareImageModal({ prediction, username, displayName, ava
     }
   }, [avatarUrl]);
 
+  // Adjust scale for mobile screens so the 600px horizontal card fits visually
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth < 640) {
+        setScale((window.innerWidth - 32) / 600); // 32px for side padding
+      } else {
+        setScale(1);
+      }
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   async function captureBlob() {
     if (!cardRef.current) return null;
-    await new Promise((r) => setTimeout(r, 150));
-    return toBlob(cardRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#000000" });
+    // html-to-image options: override any CSS transform during capture
+    return toBlob(cardRef.current, { 
+      cacheBust: true, 
+      pixelRatio: 2, 
+      backgroundColor: "#ffffff",
+      style: { transform: "scale(1)" }
+    });
   }
 
-  async function handleCopy() {
+  function handleCopy() {
     try {
-      const blob = await captureBlob();
-      if (blob) {
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
+      // Safari requires a Promise passed synchronously to ClipboardItem
+      const promise = captureBlob().then((b) => {
+        if (!b) throw new Error("Capture failed");
+        return b;
+      });
+      navigator.clipboard.write([new ClipboardItem({ "image/png": promise })]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch (e) {
       console.error(e);
     }
@@ -96,19 +118,21 @@ export default function ShareImageModal({ prediction, username, displayName, ava
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", padding: "16px" }}
+      style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", padding: "16px" }}
       onClick={onClose}
     >
-      <div style={{ width: "100%", maxWidth: "540px" }} onClick={(e) => e.stopPropagation()}>
-        
-        {/* Modal header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <span style={{ fontSize: "14px", fontWeight: 600, color: "#e2e8f0", fontFamily: font }}>Share Prediction</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "20px", padding: "4px" }}>✕</button>
-        </div>
+      {/* Modal header (outside the scaled container) */}
+      <div style={{ width: "100%", maxWidth: "600px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }} onClick={(e) => e.stopPropagation()}>
+        <span style={{ fontSize: "14px", fontWeight: 600, color: "#e2e8f0", fontFamily: font }}>Share Prediction</span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "20px", padding: "4px" }}>✕</button>
+      </div>
 
-        {/* ─── NEW PREMIUM CARD (captured) ─── */}
+      {/* Scaled container for mobile viewing */}
+      <div style={{ width: "600px", transform: `scale(${scale})`, transformOrigin: "center top" }} onClick={(e) => e.stopPropagation()}>
+        
+        {/* ─── HORIZONTAL CARD (captured) ─── */}
         <div ref={cardRef} style={{
+          width: "600px", // Strict horizontal width
           background: "#ffffff",
           padding: "32px",
           borderRadius: "24px",
@@ -116,17 +140,17 @@ export default function ShareImageModal({ prediction, username, displayName, ava
           position: "relative",
           overflow: "hidden",
           border: "1px solid rgba(0,0,0,0.08)",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,1)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
+          display: "flex",
+          gap: "32px"
         }}>
           
-          {/* Subtle green ambient light from the bottom right */}
+          {/* Ambient Lighting Backgrounds */}
           <div style={{ position: "absolute", bottom: "-100px", right: "-100px", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(0,221,148,0.08) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
-          {/* Top left ambient */}
           <div style={{ position: "absolute", top: "-100px", left: "-100px", width: "300px", height: "300px", background: "radial-gradient(circle, rgba(0,0,0,0.03) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
 
-
-
-          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "32px" }}>
+          {/* LEFT: Match Info & Profile */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", zIndex: 1, gap: "24px" }}>
             
             {/* Header: User & App Brand */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -141,9 +165,8 @@ export default function ShareImageModal({ prediction, username, displayName, ava
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(0,0,0,0.04)", padding: "4px 8px", borderRadius: "999px", border: "1px solid rgba(0,0,0,0.08)" }}>
-                <img src="/vela.jpg" alt="Vela" style={{ width: "12px", height: "12px", borderRadius: "3px" }} />
-                <span style={{ fontSize: "9px", fontWeight: 700, color: "#0a0a0a", letterSpacing: "0.1em" }}>VELA</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <img src="/vela.jpg" alt="Vela" style={{ width: "24px", height: "24px", borderRadius: "6px" }} />
               </div>
             </div>
 
@@ -169,35 +192,38 @@ export default function ShareImageModal({ prediction, username, displayName, ava
                 </div>
               )}
             </div>
+          </div>
 
-            {/* The Pick */}
-            <div style={{ background: "#f8fafc", borderRadius: "16px", padding: "24px", border: "1px solid rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em", textTransform: "uppercase" }}>Selected Pick</span>
-                <div style={{ fontSize: "36px", fontWeight: 300, color: pickColor, lineHeight: 1.1, letterSpacing: "-0.02em", wordBreak: "break-word" }}>
-                  {prediction.user_pick}
-                </div>
+          {/* RIGHT: The Pick (Inline Status) */}
+          <div style={{ width: "240px", flexShrink: 0, background: "#f8fafc", borderRadius: "16px", padding: "24px", border: "1px solid rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em", textTransform: "uppercase" }}>Selected Pick</span>
+              <div style={{ fontSize: "28px", fontWeight: 300, color: pickColor, lineHeight: 1.15, letterSpacing: "-0.02em", wordBreak: "break-word" }}>
+                {prediction.user_pick}
               </div>
-              <div style={{ padding: "10px 20px", borderRadius: "12px", background: statusBg, border: `1px solid ${statusColor}40`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: "16px", fontWeight: 800, color: statusColor, letterSpacing: "0.08em" }}>
-                  {statusLabel}
-                </span>
-              </div>
+            </div>
+            
+            <div style={{ marginTop: "24px", padding: "10px 16px", borderRadius: "12px", background: statusBg, border: `1px solid ${statusColor}40`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: "14px", fontWeight: 800, color: statusColor, letterSpacing: "0.1em" }}>
+                {statusLabel}
+              </span>
             </div>
 
           </div>
         </div>
-
-        {/* Action buttons */}
-        <div style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <button onClick={handleCopy} style={{ padding: "14px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "background 0.2s" }}>
-            {copied ? "Copied ✓" : "Copy Image"}
-          </button>
-          <button onClick={handleDownload} disabled={downloading} style={{ padding: "14px", borderRadius: "14px", border: "none", background: "#00DD94", color: "#000", fontSize: "14px", fontWeight: 700, cursor: "pointer", fontFamily: font, opacity: downloading ? 0.6 : 1, transition: "opacity 0.2s" }}>
-            {downloading ? "Saving…" : "Save / Share"}
-          </button>
-        </div>
       </div>
+
+      {/* Action buttons (outside scaled wrapper) */}
+      <div style={{ width: "100%", maxWidth: "600px", marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }} onClick={(e) => e.stopPropagation()}>
+        <button onClick={handleCopy} style={{ padding: "14px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "background 0.2s" }}>
+          {copied ? "Copied ✓" : "Copy Image"}
+        </button>
+        <button onClick={handleDownload} disabled={downloading} style={{ padding: "14px", borderRadius: "14px", border: "none", background: "#00DD94", color: "#000", fontSize: "14px", fontWeight: 700, cursor: "pointer", fontFamily: font, opacity: downloading ? 0.6 : 1, transition: "opacity 0.2s" }}>
+          {downloading ? "Saving…" : "Save / Share"}
+        </button>
+      </div>
+
     </div>
   );
 }
