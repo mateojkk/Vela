@@ -63,6 +63,17 @@ export default function Feed() {
     queryFn: () => apiGet("/markets"),
   });
 
+  const { data: profile } = useQuery<{ recent_predictions: Array<{ external_id: string }> }>({
+    queryKey: ["profile", user?.username],
+    queryFn: () => apiGet(`/profile?username=${user?.username}`),
+    enabled: !!user?.username,
+  });
+
+  const predictedMarketIds = useMemo(() => {
+    if (!profile?.recent_predictions) return new Set<string>();
+    return new Set(profile.recent_predictions.map(p => p.external_id));
+  }, [profile]);
+
   const filteredMarkets = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return markets;
@@ -137,6 +148,7 @@ export default function Feed() {
                 key={m.id}
                 group={m}
                 onClick={() => setSelectedMarket(m)}
+                isPredicted={predictedMarketIds.has(m.id)}
               />
             ))}
           </div>
@@ -159,19 +171,28 @@ export default function Feed() {
             {fixtures.map((f) => (
               <button
                 key={f.id}
-                onClick={() => {
+                onClick={predictedMarketIds.has(f.id) ? undefined : () => {
                   const group = matchGroups.find((g) => g.id === f.id);
                   if (group) setSelectedMarket(group);
                 }}
-                className="rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-muted-foreground/40"
+                disabled={predictedMarketIds.has(f.id)}
+                className={`rounded-md border border-border p-3 text-left transition-colors ${
+                  predictedMarketIds.has(f.id)
+                    ? "bg-card/50 cursor-not-allowed opacity-60"
+                    : "bg-card hover:border-muted-foreground/40"
+                }`}
               >
                 <div className="mb-1.5 flex items-center justify-between">
                   <span
                     className={`text-[10px] font-bold tracking-wider ${
-                      f.status === "LIVE" ? "text-danger" : "text-primary"
+                      predictedMarketIds.has(f.id)
+                        ? "text-primary"
+                        : f.status === "LIVE"
+                        ? "text-danger"
+                        : "text-primary"
                     }`}
                   >
-                    {f.status === "LIVE" ? "LIVE" : "UPCOMING"}
+                    {predictedMarketIds.has(f.id) ? "PREDICTED ✓" : f.status === "LIVE" ? "LIVE" : "UPCOMING"}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     {f.kickoff ? formatKickoff(f.kickoff) : "TBD"}
@@ -219,6 +240,7 @@ export default function Feed() {
                 key={m.id}
                 group={m}
                 onClick={() => setSelectedMarket(m)}
+                isPredicted={predictedMarketIds.has(m.id)}
               />
             ))}
           </div>

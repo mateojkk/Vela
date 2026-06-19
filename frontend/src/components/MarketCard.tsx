@@ -3,6 +3,7 @@ import type { MarketGroup } from "../../../shared/types";
 interface MarketCardProps {
   group: MarketGroup;
   onClick?: () => void;
+  isPredicted?: boolean;
 }
 
 
@@ -13,7 +14,7 @@ function formatEndDate(iso: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function MarketCard({ group, onClick }: MarketCardProps) {
+export default function MarketCard({ group, onClick, isPredicted }: MarketCardProps) {
   if (!group.markets || group.markets.length === 0) return null;
 
   const isStarted = group.markets.some((m) => {
@@ -22,7 +23,7 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
     return new Date(m.game_start_time).getTime() < Date.now();
   });
   const isClosed = group.markets.some((m) => m.closed || !m.active);
-  const isLocked = isStarted || isClosed;
+  const isLocked = isStarted || isClosed || isPredicted;
 
   return (
     <button
@@ -71,7 +72,11 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
       </div>
 
       <div className="mt-3 flex items-center justify-end">
-        {isLocked ? (
+        {isPredicted ? (
+          <span className="rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary md:px-3 md:text-xs">
+            Predicted ✓
+          </span>
+        ) : isLocked ? (
           <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground md:px-3 md:text-xs">
             {isClosed ? "Closed" : "Started"}
           </span>
