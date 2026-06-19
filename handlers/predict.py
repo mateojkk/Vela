@@ -37,6 +37,19 @@ class handler(BaseHTTPRequestHandler):
             if not user_id:
                 send_json(self, 404, {"error": "User not found"})
                 return
+                
+            # Check if user already predicted this match or market
+            if prediction_type == "match" and home_team and away_team:
+                existing = supabase.table("predictions").select("id").eq("user_id", user_id).eq("home_team", home_team).eq("away_team", away_team).execute()
+                if existing.data:
+                    send_json(self, 409, {"error": "You already made a pick for this match."})
+                    return
+            elif external_id:
+                existing = supabase.table("predictions").select("id").eq("user_id", user_id).eq("external_id", external_id).execute()
+                if existing.data:
+                    send_json(self, 409, {"error": "You already predicted this market."})
+                    return
+                    
             pred_id = f"pred_{uuid.uuid4().hex[:12]}"
             now = datetime.now(timezone.utc)
 

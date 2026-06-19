@@ -241,30 +241,42 @@ export default function Profile() {
             No predictions yet.
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {recent_predictions.map((p) => {
-              const context =
-                p.type === "match" && p.home_team && p.away_team
-                  ? `${p.home_team} vs ${p.away_team}`
-                  : p.question || (p.type === "match" ? "Match" : "Market");
+              const isMatch = p.type === "match" && p.home_team && p.away_team;
+              const context = isMatch
+                ? `${p.home_team} vs ${p.away_team}`
+                : p.question || (p.type === "match" ? "Match" : "Market");
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between rounded-md border border-border bg-card p-3 hover:border-muted-foreground/40"
+                  className="relative flex flex-col justify-between rounded-md border border-border bg-card p-4 transition-colors hover:border-muted-foreground/40"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">
-                      {context}
+                  <div className="mb-3 flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {isMatch ? "Match Prediction" : "Market"}
+                      </div>
+                      <div className="truncate text-base font-semibold text-foreground">
+                        {context}
+                      </div>
                     </div>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {p.user_pick}
-                    </div>
+                    <ShareButton
+                      url={`${window.location.origin}/u/${user.username}`}
+                      title={`${user.display_name || `@${user.username}`} predicted ${p.user_pick} on Vela`}
+                      text={`I predicted ${p.user_pick} for ${context} on Vela. What's your pick?`}
+                    />
                   </div>
-                  <span
-                    className={`ml-3 text-[10px] font-semibold ${outcomeColor(p.outcome)}`}
-                  >
-                    {outcomeLabel(p.outcome)}
-                  </span>
+                  <div className="flex items-center justify-between border-t border-border pt-3">
+                    <span className="truncate rounded-md bg-accent px-2 py-1 text-xs font-medium text-foreground">
+                      Pick: {p.user_pick}
+                    </span>
+                    <span
+                      className={`text-xs font-bold uppercase tracking-widest ${outcomeColor(p.outcome)}`}
+                    >
+                      {outcomeLabel(p.outcome)}
+                    </span>
+                  </div>
                 </div>
               );
             })}
