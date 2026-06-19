@@ -85,7 +85,6 @@ export default function ShareImageModal({ prediction, username, displayName, ava
     : prediction.question || "Match Prediction";
 
   const font = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  const mono = "'JetBrains Mono', 'Courier New', monospace";
 
   return (
     <div
@@ -185,7 +184,7 @@ export default function ShareImageModal({ prediction, username, displayName, ava
             <div style={{ width: "180px", flexShrink: 0, padding: "32px 24px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "8px" }}>My Pick</div>
-                <div style={{ fontSize: "38px", fontWeight: 900, color: pickColor, lineHeight: 1.05, letterSpacing: "-0.02em", wordBreak: "break-word", fontFamily: mono }}>
+                <div style={{ fontSize: "38px", fontWeight: 300, color: pickColor, lineHeight: 1.05, letterSpacing: "-0.02em", wordBreak: "break-word" }}>
                   {prediction.user_pick}
                 </div>
               </div>
