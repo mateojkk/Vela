@@ -6,6 +6,7 @@ import Layout from "../components/Layout";
 import Avatar from "../components/Avatar";
 import EditProfileModal from "../components/EditProfileModal";
 import ShareButton from "../components/ShareButton";
+import ShareImageModal from "../components/ShareImageModal";
 import { useAuth } from "../hooks/useAuth";
 
 interface ProfileData {
@@ -56,6 +57,7 @@ export default function Profile() {
   const [checkMessage, setCheckMessage] = useState("");
   const [resetConfirm, setResetConfirm] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
+  const [sharePrediction, setSharePrediction] = useState<ProfileData["recent_predictions"][0] | null>(null);
 
   const { data, isLoading } = useQuery<ProfileData>({
     queryKey: ["profile", username],
@@ -261,11 +263,30 @@ export default function Profile() {
                         {context}
                       </div>
                     </div>
-                    <ShareButton
-                      url={`${window.location.origin}/u/${user.username}`}
-                      title={`${user.display_name || `@${user.username}`} predicted ${p.user_pick} on Vela`}
-                      text={`I predicted ${p.user_pick} for ${context} on Vela. What's your pick?`}
-                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSharePrediction(p);
+                      }}
+                      className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                      aria-label="Share"
+                      title="Share"
+                    >
+                      <svg
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" />
+                        <polyline points="16 6 12 2 8 6" />
+                        <line x1="12" y1="2" x2="12" y2="15" />
+                      </svg>
+                      Share
+                    </button>
                   </div>
                   <div className="flex items-center justify-between border-t border-border pt-3">
                     <span className="truncate rounded-md bg-accent px-2 py-1 text-xs font-medium text-foreground">
@@ -370,6 +391,16 @@ export default function Profile() {
             </div>
           </div>
         </div>
+      )}
+
+      {sharePrediction && (
+        <ShareImageModal
+          prediction={sharePrediction}
+          username={user.username}
+          displayName={user.display_name}
+          avatarUrl={user.avatar_url}
+          onClose={() => setSharePrediction(null)}
+        />
       )}
     </Layout>
   );
