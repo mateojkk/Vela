@@ -17,10 +17,10 @@
   --color-accent: #262626;
   --color-accent-foreground: #fafafa;
 
-  /* Sky blue light / water light accent */
-  --color-primary: #7dd3fc;
+  /* Green accent */
+  --color-primary: #00DD94;
   --color-primary-foreground: #0a0a0a;
-  --color-ring: #7dd3fc;
+  --color-ring: #00DD94;
 
   /* Status */
   --color-destructive: #ef4444;
@@ -69,7 +69,7 @@
   --card-foreground: #fafafa;
   --popover: #171717;
   --popover-foreground: #fafafa;
-  --primary: #7dd3fc;
+  --primary: #00DD94;
   --primary-foreground: #0a0a0a;
   --secondary: #262626;
   --secondary-foreground: #fafafa;
@@ -83,7 +83,7 @@
   --danger: #f87171;
   --border: #262626;
   --input: #262626;
-  --ring: #7dd3fc;
+  --ring: #00DD94;
   --radius: 0.625rem;
 }
 
