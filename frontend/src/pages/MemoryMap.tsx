@@ -20,15 +20,6 @@ const PROBE_QUERIES = [
 ];
 
 function classifyMemory(text: string): Memory["type"] {
-  const t = text.toLowerCase();
-  const content = t.replace("user said:", "").replace("vela replied:", "").trim();
-  
-  if (["predict", "pick", "chose", "bet", "call"].some((w) => content.includes(w))) return "prediction";
-  if (["wrong", "miss", "incorrect", "bad", "lost", "fail"].some((w) => content.includes(w))) return "miss";
-  if (["correct", "right", "won", "nailed", "good call"].some((w) => content.includes(w))) return "hit";
-  if (["think", "believe", "opinion", "take", "feel", "reckon"].some((w) => content.includes(w))) return "opinion";
-  if (["rival", "debate", "argue", "disagree"].some((w) => content.includes(w))) return "rivalry";
-  if (["goal", "match", "game", "fixture", "played"].some((w) => content.includes(w))) return "match";
   return "memory";
 }
 
@@ -71,18 +62,7 @@ function countByType(memories: Memory[]) {
   return counts;
 }
 
-function typeBadge(type: Memory["type"]) {
-  const cfg = TYPE_CONFIG[type];
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
-      style={{ color: cfg.color, borderColor: `${cfg.color}40`, backgroundColor: `${cfg.color}10` }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cfg.color }} />
-      {cfg.label.replace(/s$/, "")}
-    </span>
-  );
-}
+// Removed typeBadge
 
 function project(lat: number, lng: number, rotY: number, cx: number, cy: number, r: number) {
   const phi = (lat * Math.PI) / 180;
@@ -248,7 +228,7 @@ export default function MemoryMap() {
       points.push({
         lat: Math.max(-85, Math.min(85, lat)),
         lng,
-        color: TYPE_CONFIG[m.type].color,
+        color: ["#38bdf8", "#3fe77e", "#ff5c5c", "#9a9cc4", "#e0a878", "#a1a1aa"][seed % 6],
         size: 2 + m.distance * 3,
         id: m.blob_id,
         memory: m,
@@ -408,7 +388,6 @@ export default function MemoryMap() {
   }, [globePoints]);
 
   const filtered = memories.filter((m) => {
-    if (filter !== "all" && m.type !== filter) return false;
     if (search && !m.text.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -417,15 +396,7 @@ export default function MemoryMap() {
   const totalSeen = memories.length;
   const intelligenceScore = Math.min(100, Math.round(totalSeen * 1.6));
 
-  const typeStats: MemoryGroup[] = (Object.keys(TYPE_CONFIG) as Memory["type"][])
-    .map((t) => ({ type: t, label: TYPE_CONFIG[t].label, color: TYPE_CONFIG[t].color, count: counts[t] ?? 0 }))
-    .filter((g) => g.count > 0)
-    .sort((a, b) => b.count - a.count);
-
-  const toggleFilter = (t: Memory["type"] | "all") => {
-    setFilter(t);
-    setSelectedMemory(null);
-  };
+  // Removed toggleFilter and typeStats
 
   if (!isOwner) {
     return (
@@ -552,35 +523,13 @@ export default function MemoryMap() {
           {/* Right sidebar */}
           <div className="min-w-0 flex-1">
             {/* Filter bar */}
-            <div className="mb-4 flex flex-wrap items-center gap-1.5">
-              <button
-                onClick={() => toggleFilter("all")}
-                className={`rounded border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
-                  filter === "all" ? "border-primary/50 bg-accent text-foreground" : "border-border bg-card text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
-                }`}
-              >
-                ALL <span className="ml-1 tabular-nums">{totalSeen}</span>
-              </button>
-              {typeStats.map((g) => (
-                <button
-                  key={g.type}
-                  onClick={() => toggleFilter(g.type)}
-                  className={`flex items-center gap-1 rounded border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
-                    filter === g.type ? "bg-accent text-foreground" : "border-border bg-card text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
-                  }`}
-                  style={filter === g.type ? { borderColor: `${g.color}80` } : undefined}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: g.color }} />
-                  {g.label.slice(0, 4)}
-                  <span className="tabular-nums">{g.count}</span>
-                </button>
-              ))}
+            <div className="mb-4">
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="> search"
-                className="ml-auto h-8 w-full sm:w-40 flex-1 sm:flex-none rounded border border-border bg-card px-2.5 font-mono text-[10px] text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
+                placeholder="> search memories..."
+                className="w-full rounded border border-border bg-card px-3 py-2 font-mono text-[10px] text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
               />
             </div>
 
@@ -623,10 +572,9 @@ export default function MemoryMap() {
                         : "border-border bg-card/80 hover:border-muted-foreground/30"
                     }`}
                   >
-                    <div className="mb-1 flex items-center justify-between">
-                      {typeBadge(m.type)}
+                    <div className="mb-1 flex items-center justify-end">
                       <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
-                        {((1 - m.distance) * 100).toFixed(0)}%
+                        {((1 - m.distance) * 100).toFixed(0)}% Match
                       </span>
                     </div>
                     <p className={`font-mono text-[11px] leading-relaxed ${
