@@ -198,16 +198,6 @@ export default function Feed() {
                     </div>
                   </div>
                 </div>
-                {f.markets[0] && (
-                  <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[10px]">
-                    <span className="text-muted-foreground">
-                      {f.markets.length} market{f.markets.length !== 1 ? "s" : ""}
-                    </span>
-                    <span className="font-mono tabular-nums text-success">
-                      {Math.round((f.markets[0]?.yes_price ?? 0) * 100)}¢
-                    </span>
-                  </div>
-                )}
               </button>
             ))}
           </div>
