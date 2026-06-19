@@ -19,7 +19,7 @@ const PROBE_QUERIES = [
   "World Cup 2026 tournament matchday goals",
 ];
 
-function classifyMemory(text: string): Memory["type"] {
+function classifyMemory(_text: string): Memory["type"] {
   return "memory";
 }
 

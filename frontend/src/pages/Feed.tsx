@@ -148,7 +148,7 @@ export default function Feed() {
                 key={m.id}
                 group={m}
                 onClick={() => setSelectedMarket(m)}
-                isPredicted={predictedMarketIds.has(m.id)}
+                isPredicted={m.markets.some(market => predictedMarketIds.has(market.id))}
               />
             ))}
           </div>
@@ -171,13 +171,13 @@ export default function Feed() {
             {fixtures.map((f) => (
               <button
                 key={f.id}
-                onClick={predictedMarketIds.has(f.id) ? undefined : () => {
+                onClick={f.markets.some(m => predictedMarketIds.has(m.id)) ? undefined : () => {
                   const group = matchGroups.find((g) => g.id === f.id);
                   if (group) setSelectedMarket(group);
                 }}
-                disabled={predictedMarketIds.has(f.id)}
+                disabled={f.markets.some(m => predictedMarketIds.has(m.id))}
                 className={`rounded-md border border-border p-3 text-left transition-colors ${
-                  predictedMarketIds.has(f.id)
+                  f.markets.some(m => predictedMarketIds.has(m.id))
                     ? "bg-card/50 cursor-not-allowed opacity-60"
                     : "bg-card hover:border-muted-foreground/40"
                 }`}
@@ -185,14 +185,14 @@ export default function Feed() {
                 <div className="mb-1.5 flex items-center justify-between">
                   <span
                     className={`text-[10px] font-bold tracking-wider ${
-                      predictedMarketIds.has(f.id)
+                      f.markets.some(m => predictedMarketIds.has(m.id))
                         ? "text-primary"
                         : f.status === "LIVE"
                         ? "text-danger"
                         : "text-primary"
                     }`}
                   >
-                    {predictedMarketIds.has(f.id) ? "PREDICTED ✓" : f.status === "LIVE" ? "LIVE" : "UPCOMING"}
+                    {f.markets.some(m => predictedMarketIds.has(m.id)) ? "PREDICTED ✓" : f.status === "LIVE" ? "LIVE" : "UPCOMING"}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     {f.kickoff ? formatKickoff(f.kickoff) : "TBD"}
@@ -240,7 +240,7 @@ export default function Feed() {
                 key={m.id}
                 group={m}
                 onClick={() => setSelectedMarket(m)}
-                isPredicted={predictedMarketIds.has(m.id)}
+                isPredicted={m.markets.some(market => predictedMarketIds.has(market.id))}
               />
             ))}
           </div>
