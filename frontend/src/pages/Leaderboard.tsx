@@ -88,11 +88,11 @@ export default function Leaderboard() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-0.5 md:flex-row md:gap-4">
-                <span className="text-right text-sm tabular-nums text-muted-foreground md:w-[100px]">
+              <div className="flex flex-col items-end gap-0.5 md:contents">
+                <span className="text-right text-sm tabular-nums text-muted-foreground">
                   {e.correct}/{e.total_predictions}
                 </span>
-                <span className="text-right text-sm font-bold tabular-nums text-success md:w-[100px]">
+                <span className="text-right text-sm font-bold tabular-nums text-success">
                   {e.accuracy_pct.toFixed(1)}%
                 </span>
               </div>
