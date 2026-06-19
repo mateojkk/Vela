@@ -5,7 +5,6 @@ import { apiGet, apiPost } from "../lib/api";
 import Layout from "../components/Layout";
 import Avatar from "../components/Avatar";
 import EditProfileModal from "../components/EditProfileModal";
-import ShareButton from "../components/ShareButton";
 import ShareImageModal from "../components/ShareImageModal";
 import { useAuth } from "../hooks/useAuth";
 
@@ -150,11 +149,7 @@ export default function Profile() {
               </div>
             )}
           </div>
-          <ShareButton
-            url={`${window.location.origin}/api/og?type=profile&username=${encodeURIComponent(user.username)}`}
-            title={`@${user.username} on Vela`}
-            text={`@${user.username} is making World Cup 2026 calls on Vela — ${record.correct}/${record.total_predictions} correct (${record.accuracy_pct.toFixed(1)}% accuracy).`}
-          />
+          <ProfileCopyButton username={user.username} />
         </div>
 
         {isOwnProfile && checkMessage && (
@@ -331,5 +326,40 @@ export default function Profile() {
         />
       )}
     </Layout>
+  );
+}
+
+function ProfileCopyButton({ username }: { username: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${window.location.origin}/u/${encodeURIComponent(username)}`;
+  
+  function handleCopy() {
+    try {
+      navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+    >
+      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+      </svg>
+      {copied ? "Copied!" : "Copy Link"}
+    </button>
   );
 }
