@@ -61,9 +61,10 @@ def get_finished_matches() -> dict:
     import datetime
     today = datetime.date.today()
     start = today - datetime.timedelta(days=7)
+    end = today + datetime.timedelta(days=1)
     
     try:
-        url = f"https://api.football-data.org/v4/matches?dateFrom={start.isoformat()}&dateTo={today.isoformat()}"
+        url = f"https://api.football-data.org/v4/matches?dateFrom={start.isoformat()}&dateTo={end.isoformat()}"
         req = urllib.request.Request(
             url,
             headers={"X-Auth-Token": api_key}
@@ -76,6 +77,8 @@ def get_finished_matches() -> dict:
             if m.get("status") in ["FINISHED", "AWARDED"]:
                 home = m.get("homeTeam", {}).get("name", "")
                 away = m.get("awayTeam", {}).get("name", "")
+                home_short = m.get("homeTeam", {}).get("shortName", "") or home
+                away_short = m.get("awayTeam", {}).get("shortName", "") or away
                 score_h = m.get("score", {}).get("fullTime", {}).get("home", 0)
                 score_a = m.get("score", {}).get("fullTime", {}).get("away", 0)
                 
@@ -85,10 +88,14 @@ def get_finished_matches() -> dict:
                     outcome = "away"
                 else:
                     outcome = "draw"
-                    
-                n_home = _normalize_team(home)
-                n_away = _normalize_team(away)
-                finished[(n_home, n_away)] = outcome
+                
+                # Index by all name variants (name, shortName) so normalization
+                # always finds a hit regardless of what the frontend stored.
+                for h in set([home, home_short]):
+                    for a in set([away, away_short]):
+                        n_home = _normalize_team(h)
+                        n_away = _normalize_team(a)
+                        finished[(n_home, n_away)] = outcome
                 
         return finished
     except Exception as e:
