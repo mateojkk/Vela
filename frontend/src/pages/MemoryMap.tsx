@@ -23,22 +23,7 @@ function classifyMemory(text: string): Memory["type"] {
   return "memory";
 }
 
-interface MemoryGroup {
-  type: Memory["type"];
-  label: string;
-  color: string;
-  count: number;
-}
-
-const TYPE_CONFIG: Record<Memory["type"], { color: string; label: string; description: string }> = {
-  prediction: { color: "#38bdf8", label: "Predictions", description: "Calls you locked in" },
-  hit:        { color: "#3fe77e", label: "Good Calls",  description: "Calls you nailed" },
-  miss:       { color: "#ff5c5c", label: "Bad Calls",   description: "Calls you got wrong" },
-  opinion:    { color: "#9a9cc4", label: "Opinions",    description: "Hot takes and beliefs" },
-  rivalry:    { color: "#e0a878", label: "Rivalries",   description: "Debates and arguments" },
-  match:      { color: "#3fe77e", label: "Matches",     description: "Games you discussed" },
-  memory:     { color: "#a1a1aa", label: "Memories",    description: "Everything else" },
-};
+// Grouping and type configurations have been removed.
 
 const POLL_MS = 30_000;
 const GLOBE_SIZE = 380;
@@ -54,13 +39,7 @@ interface GlobePoint {
   memory: Memory;
 }
 
-function countByType(memories: Memory[]) {
-  const counts: Partial<Record<Memory["type"], number>> = {};
-  for (const m of memories) {
-    counts[m.type] = (counts[m.type] ?? 0) + 1;
-  }
-  return counts;
-}
+// Removed countByType
 
 // Removed typeBadge
 
@@ -192,7 +171,6 @@ export default function MemoryMap() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const healthRef = useRef<{ ok: boolean; message: string } | null>(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Memory["type"] | "all">("all");
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [profileData, setProfileData] = useState<{ record?: { correct: number; total_predictions: number } } | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
@@ -392,7 +370,6 @@ export default function MemoryMap() {
     return true;
   });
 
-  const counts = countByType(memories);
   const totalSeen = memories.length;
   const intelligenceScore = Math.min(100, Math.round(totalSeen * 1.6));
 
