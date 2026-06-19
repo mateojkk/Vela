@@ -206,7 +206,7 @@ export default function MemoryMap() {
       points.push({
         lat: Math.max(-85, Math.min(85, lat)),
         lng,
-        color: ["#38bdf8", "#3fe77e", "#ff5c5c", "#9a9cc4", "#e0a878", "#a1a1aa"][seed % 6],
+        color: ["#38bdf8", "#3fe77e", "#ff5c5c", "#9a9cc4", "#e0a878", "#a1a1aa"][Math.abs(seed) % 6],
         size: 2 + m.distance * 3,
         id: m.blob_id,
         memory: m,
@@ -440,8 +440,8 @@ export default function MemoryMap() {
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Wins</div>
           </div>
           <div className="rounded border border-border bg-card/80 p-3 text-center">
-            <div className="font-mono text-xl font-bold tabular-nums text-danger">{Math.max(0, (profileData?.record?.total_predictions ?? 0) - (profileData?.record?.correct ?? 0))}</div>
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Losses</div>
+            <div className="font-mono text-xl font-bold tabular-nums text-foreground">{profileData?.record?.total_predictions ?? 0}</div>
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Calls Made</div>
           </div>
         </div>
 
