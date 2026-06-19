@@ -96,7 +96,7 @@ export default function ShareImageModal({ prediction, username, displayName, ava
       style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", padding: "16px" }}
       onClick={onClose}
     >
-      <div style={{ width: "100%", maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ width: "100%", maxWidth: "380px" }} onClick={(e) => e.stopPropagation()}>
         
         {/* Modal header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -106,80 +106,80 @@ export default function ShareImageModal({ prediction, username, displayName, ava
 
         {/* ─── NEW PREMIUM CARD (captured) ─── */}
         <div ref={cardRef} style={{
-          background: "#050505",
-          padding: "40px",
-          borderRadius: "28px",
+          background: "#ffffff",
+          padding: "32px",
+          borderRadius: "24px",
           fontFamily: font,
           position: "relative",
           overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.1)",
+          border: "1px solid rgba(0,0,0,0.08)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,1)",
         }}>
           
           {/* Subtle green ambient light from the bottom right */}
           <div style={{ position: "absolute", bottom: "-100px", right: "-100px", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(0,221,148,0.08) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
           {/* Top left ambient */}
-          <div style={{ position: "absolute", top: "-100px", left: "-100px", width: "300px", height: "300px", background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: "-100px", left: "-100px", width: "300px", height: "300px", background: "radial-gradient(circle, rgba(0,0,0,0.03) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
 
           {/* Status Watermark */}
           {watermarkText && (
             <div style={{
               position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%) rotate(-15deg)",
-              fontSize: "120px", fontWeight: 900, color: watermarkColor,
+              fontSize: "90px", fontWeight: 900, color: watermarkColor,
               whiteSpace: "nowrap", pointerEvents: "none", zIndex: 0, letterSpacing: "-0.05em"
             }}>
               {watermarkText}
             </div>
           )}
 
-          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "40px" }}>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "32px" }}>
             
             {/* Header: User & App Brand */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {avatarUrl
-                  ? <img src={avatarUrl} alt="" crossOrigin="anonymous" style={{ width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }} />
-                  : <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "15px", color: "#fff", border: "1px solid rgba(255,255,255,0.2)" }}>{name.charAt(0).toUpperCase()}</div>
+                  ? <img src={avatarUrl} alt="" crossOrigin="anonymous" style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(0,0,0,0.1)" }} />
+                  : <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "12px", color: "#0a0a0a", border: "1px solid rgba(0,0,0,0.1)" }}>{name.charAt(0).toUpperCase()}</div>
                 }
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 600, color: "#fff", letterSpacing: "0.01em" }}>{name}</span>
-                  <span style={{ fontSize: "11px", fontWeight: 500, color: "#9ca3af", letterSpacing: "0.04em" }}>PREDICTION</span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#0a0a0a", letterSpacing: "0.01em" }}>{name}</span>
+                  <span style={{ fontSize: "9px", fontWeight: 500, color: "#64748b", letterSpacing: "0.04em" }}>PREDICTION</span>
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", padding: "6px 12px", borderRadius: "999px", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <img src="/vela.jpg" alt="Vela" style={{ width: "16px", height: "16px", borderRadius: "4px" }} />
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#fff", letterSpacing: "0.1em" }}>VELA</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "rgba(0,0,0,0.04)", padding: "4px 8px", borderRadius: "999px", border: "1px solid rgba(0,0,0,0.08)" }}>
+                <img src="/vela.jpg" alt="Vela" style={{ width: "12px", height: "12px", borderRadius: "3px" }} />
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#0a0a0a", letterSpacing: "0.1em" }}>VELA</span>
               </div>
             </div>
 
             {/* Match Information */}
             <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, color: "#00DD94", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "16px" }}>
+              <div style={{ fontSize: "10px", fontWeight: 700, color: "#00DD94", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "12px" }}>
                 World Cup 2026
               </div>
               
               {isMatch ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ fontSize: "36px", fontWeight: 800, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.03em" }}>{prediction.home_team}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                    <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(255,255,255,0.1), transparent)" }} />
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", fontStyle: "italic" }}>vs</span>
-                    <div style={{ flex: 1, height: "1px", background: "linear-gradient(270deg, rgba(255,255,255,0.1), transparent)" }} />
+                  <div style={{ fontSize: "28px", fontWeight: 800, color: "#0a0a0a", lineHeight: 1.1, letterSpacing: "-0.03em" }}>{prediction.home_team}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(0,0,0,0.1), transparent)" }} />
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: "#64748b", fontStyle: "italic" }}>vs</span>
+                    <div style={{ flex: 1, height: "1px", background: "linear-gradient(270deg, rgba(0,0,0,0.1), transparent)" }} />
                   </div>
-                  <div style={{ fontSize: "36px", fontWeight: 800, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.03em", textAlign: "right" }}>{prediction.away_team}</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, color: "#0a0a0a", lineHeight: 1.1, letterSpacing: "-0.03em", textAlign: "right" }}>{prediction.away_team}</div>
                 </div>
               ) : (
-                <div style={{ fontSize: "28px", fontWeight: 700, color: "#fff", lineHeight: 1.3, letterSpacing: "-0.02em" }}>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "#0a0a0a", lineHeight: 1.3, letterSpacing: "-0.02em" }}>
                   {prediction.question}
                 </div>
               )}
             </div>
 
             {/* The Pick */}
-            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "20px", padding: "24px", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: "12px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em", textTransform: "uppercase" }}>Selected Pick</span>
-              <div style={{ fontSize: "42px", fontWeight: 300, color: pickColor, lineHeight: 1.1, letterSpacing: "-0.02em", wordBreak: "break-word" }}>
+            <div style={{ background: "#f8fafc", borderRadius: "16px", padding: "16px", border: "1px solid rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <span style={{ fontSize: "10px", fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em", textTransform: "uppercase" }}>Selected Pick</span>
+              <div style={{ fontSize: "32px", fontWeight: 300, color: pickColor, lineHeight: 1.1, letterSpacing: "-0.02em", wordBreak: "break-word" }}>
                 {prediction.user_pick}
               </div>
             </div>
