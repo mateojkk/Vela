@@ -320,7 +320,7 @@ export default function Predictions() {
       )}
 
       <p className="mt-4 text-right text-[10px] text-muted-foreground">
-        Open Polymarket markets resolve within minutes of the event closing;
+        Predictions resolve within minutes of the event closing;
         the leaderboard refreshes hourly.
       </p>
     </Layout>

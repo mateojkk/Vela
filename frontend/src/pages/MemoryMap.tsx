@@ -38,8 +38,8 @@ interface MemoryGroup {
 
 const TYPE_CONFIG: Record<Memory["type"], { color: string; label: string; description: string }> = {
   prediction: { color: "#38bdf8", label: "Predictions", description: "Calls you locked in" },
-  hit:        { color: "#3fe77e", label: "Hits",        description: "Calls you nailed" },
-  miss:       { color: "#ff5c5c", label: "Misses",      description: "Calls you got wrong" },
+  hit:        { color: "#3fe77e", label: "Wins",        description: "Calls you nailed" },
+  miss:       { color: "#ff5c5c", label: "Losses",      description: "Calls you got wrong" },
   opinion:    { color: "#9a9cc4", label: "Opinions",    description: "Hot takes and beliefs" },
   rivalry:    { color: "#e0a878", label: "Rivalries",   description: "Debates and arguments" },
   match:      { color: "#3fe77e", label: "Matches",     description: "Games you discussed" },
@@ -334,8 +334,9 @@ export default function MemoryMap() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = GLOBE_SIZE * dpr;
     canvas.height = GLOBE_SIZE * dpr;
-    canvas.style.width = `${GLOBE_SIZE}px`;
-    canvas.style.height = `${GLOBE_SIZE}px`;
+    canvas.style.maxWidth = "100%";
+    canvas.style.height = "auto";
+    canvas.style.aspectRatio = "1 / 1";
     ctx.scale(dpr, dpr);
     const cx = GLOBE_SIZE / 2;
     const cy = GLOBE_SIZE / 2;
@@ -472,11 +473,11 @@ export default function MemoryMap() {
           </div>
           <div className="rounded border border-border bg-card/80 p-3 text-center">
             <div className="font-mono text-xl font-bold tabular-nums text-success">{counts.hit ?? 0}</div>
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Hits</div>
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Wins</div>
           </div>
           <div className="rounded border border-border bg-card/80 p-3 text-center">
             <div className="font-mono text-xl font-bold tabular-nums text-danger">{counts.miss ?? 0}</div>
-            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Misses</div>
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Losses</div>
           </div>
         </div>
 
@@ -563,7 +564,7 @@ export default function MemoryMap() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="> search"
-                className="ml-auto h-8 w-40 rounded border border-border bg-card px-2.5 font-mono text-[10px] text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
+                className="ml-auto h-8 w-full sm:w-40 flex-1 sm:flex-none rounded border border-border bg-card px-2.5 font-mono text-[10px] text-foreground placeholder:text-muted-foreground focus:border-muted-foreground focus:outline-none"
               />
             </div>
 

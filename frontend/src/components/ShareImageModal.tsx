@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { toBlob, toPng } from "html-to-image";
+import { toPng } from "html-to-image";
 
 interface Props {
   prediction: {
@@ -52,11 +52,10 @@ export default function ShareImageModal({ prediction, username, displayName, ava
     }
   }, [avatarUrl]);
 
-  // Adjust scale for mobile screens so the 600px horizontal card fits visually
   useEffect(() => {
     function handleResize() {
       if (window.innerWidth < 640) {
-        setScale((window.innerWidth - 32) / 600); // 32px for side padding
+        setScale((window.innerWidth - 32) / 600); 
       } else {
         setScale(1);
       }
@@ -66,34 +65,10 @@ export default function ShareImageModal({ prediction, username, displayName, ava
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Pre-generate image for wallet browsers so users can long-press it
-  useEffect(() => {
-    let mounted = true;
-    async function generate() {
-      if (!cardRef.current) return;
-      await new Promise(r => setTimeout(r, 150)); // let fonts load
-      try {
-        const url = await toPng(cardRef.current, { 
-          cacheBust: true, 
-          pixelRatio: 2, 
-          backgroundColor: "#ffffff",
-          style: { transform: "scale(1)" }
-        });
-        if (mounted) setGeneratedDataUrl(url);
-      } catch (e) {
-        console.error("Failed to pre-generate image:", e);
-      }
-    }
-    generate();
-    return () => { mounted = false; };
-  }, [avatarUrl]);
-
-  async function captureBlob() {
-    if (generatedDataUrl) {
-      return await (await fetch(generatedDataUrl)).blob();
-    }
+  async function generateUrl() {
+    if (generatedDataUrl) return generatedDataUrl;
     if (!cardRef.current) return null;
-    return toBlob(cardRef.current, { 
+    return toPng(cardRef.current, { 
       cacheBust: true, 
       pixelRatio: 2, 
       backgroundColor: "#ffffff",
@@ -103,10 +78,9 @@ export default function ShareImageModal({ prediction, username, displayName, ava
 
   function handleCopy() {
     try {
-      // Safari requires a Promise passed synchronously to ClipboardItem
-      const promise = captureBlob().then((b) => {
-        if (!b) throw new Error("Capture failed");
-        return b;
+      const promise = generateUrl().then((url) => {
+        if (!url) throw new Error("Capture failed");
+        return fetch(url).then(r => r.blob());
       });
       navigator.clipboard.write([new ClipboardItem({ "image/png": promise })]);
       setCopied(true);
@@ -119,18 +93,26 @@ export default function ShareImageModal({ prediction, username, displayName, ava
   async function handleDownload() {
     setDownloading(true);
     try {
-      const blob = await captureBlob();
-      if (!blob) return;
+      const url = await generateUrl();
+      if (!url) return;
+      
+      const res = await fetch(url);
+      const blob = await res.blob();
       const filename = `vela-${prediction.id}.png`;
       const file = new File([blob], filename, { type: "image/png" });
+      
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: "My Vela Prediction" });
       } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a); URL.revokeObjectURL(url);
+        setGeneratedDataUrl(url);
+        try {
+          const objectUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = objectUrl; a.download = filename;
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a); 
+          URL.revokeObjectURL(objectUrl);
+        } catch(e) {}
       }
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") console.error(e);
@@ -146,23 +128,18 @@ export default function ShareImageModal({ prediction, username, displayName, ava
       style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", padding: "16px" }}
       onClick={onClose}
     >
-      {/* Modal header (outside the scaled container) */}
       <div style={{ width: "100%", maxWidth: "600px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }} onClick={(e) => e.stopPropagation()}>
         <span style={{ fontSize: "14px", fontWeight: 600, color: "#e2e8f0", fontFamily: font }}>Share Prediction</span>
         <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "20px", padding: "4px" }}>✕</button>
       </div>
 
-      {/* Scaled container for mobile viewing */}
       <div style={{ width: "600px", transform: `scale(${scale})`, transformOrigin: "center top" }} onClick={(e) => e.stopPropagation()}>
-        
         {generatedDataUrl && (
           <img src={generatedDataUrl} alt="Prediction" style={{ width: "600px", borderRadius: "24px", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", display: "block" }} />
         )}
 
-        {/* ─── HORIZONTAL CARD (captured) ─── */}
-        {/* We keep it in the DOM but hide it visually once generated, so we don't flash, and we can still generate it */}
         <div ref={cardRef} style={{
-          width: "600px", // Strict horizontal width
+          width: "600px",
           background: "#ffffff",
           padding: "32px",
           borderRadius: "24px",
@@ -177,14 +154,10 @@ export default function ShareImageModal({ prediction, username, displayName, ava
           gap: "32px"
         }}>
           
-          {/* Ambient Lighting Backgrounds */}
           <div style={{ position: "absolute", bottom: "-100px", right: "-100px", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(0,221,148,0.08) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
           <div style={{ position: "absolute", top: "-100px", left: "-100px", width: "300px", height: "300px", background: "radial-gradient(circle, rgba(0,0,0,0.03) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
 
-          {/* LEFT: Match Info & Profile */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", zIndex: 1, gap: "24px" }}>
-            
-            {/* Header: User & App Brand */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {avatarUrl
@@ -202,7 +175,6 @@ export default function ShareImageModal({ prediction, username, displayName, ava
               </div>
             </div>
 
-            {/* Match Information */}
             <div>
               <div style={{ fontSize: "10px", fontWeight: 700, color: "#00DD94", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "12px" }}>
                 World Cup 2026
@@ -226,7 +198,6 @@ export default function ShareImageModal({ prediction, username, displayName, ava
             </div>
           </div>
 
-          {/* RIGHT: The Pick (Inline Status) */}
           <div style={{ width: "240px", flexShrink: 0, background: "#f8fafc", borderRadius: "16px", padding: "24px", border: "1px solid rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -252,7 +223,6 @@ export default function ShareImageModal({ prediction, username, displayName, ava
         </div>
       )}
 
-      {/* Action buttons (outside scaled wrapper) */}
       <div style={{ width: "100%", maxWidth: "600px", marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }} onClick={(e) => e.stopPropagation()}>
         <button onClick={handleCopy} style={{ padding: "14px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: font, transition: "background 0.2s" }}>
           {copied ? "Copied ✓" : "Copy Image"}
