@@ -5,22 +5,6 @@ interface MarketCardProps {
   onClick?: () => void;
 }
 
-function probColor(p: number): string {
-  if (p >= 0.5) return "text-success";
-  if (p >= 0.3) return "text-warning";
-  return "text-danger";
-}
-
-function formatVolume(v: number): string {
-  if (!v) return "$0";
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${Math.round(v)}`;
-}
-
-function formatProb(p: number): string {
-  return `${Math.round(p * 100)}%`;
-}
 
 function formatEndDate(iso: string): string {
   if (!iso) return "";
@@ -33,8 +17,6 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
   // For match groups, use the first market's yes_price as the headline probability.
   // For prediction groups, same thing — there's typically one main market.
   const primary = group.markets[0];
-  const prob = primary?.yes_price ?? 0;
-  const color = probColor(prob);
   
   const isStarted = group.markets.some((m) => {
     if (!m.game_start_time) return false;
@@ -87,16 +69,9 @@ export default function MarketCard({ group, onClick }: MarketCardProps) {
             )}
           </div>
         </div>
-
-        <div className={`shrink-0 text-xl font-bold tabular-nums md:text-2xl ${isLocked ? "text-muted-foreground" : color}`}>
-          {formatProb(prob)}
-        </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground md:text-xs">
-          {formatVolume(group.volume)} vol
-        </span>
+      <div className="mt-3 flex items-center justify-end">
         {isLocked ? (
           <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground md:px-3 md:text-xs">
             {isClosed ? "Closed" : "Started"}
