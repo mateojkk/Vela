@@ -11,35 +11,36 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 from lib.common import get_supabase, get_groq, send_json, require_auth_email, options, normalize_address, find_user_id
-from lib.polymarket import fetch_wc_events, group_events_by_match
 
 
 def get_todays_fixtures():
-    """Get today's scheduled matches from Polymarket (grouped match events)."""
+    """Get today's scheduled matches from football-data.org."""
     try:
-        events = fetch_wc_events()
-        groups = group_events_by_match(events)
+        from lib.live_scores import get_upcoming_matches
+        events = get_upcoming_matches()
         fixtures = []
-        for g in groups:
-            if not g.get("match"):
+        now_date = datetime.now(timezone.utc).date()
+        for m in events:
+            home = m.get("homeTeam", {}).get("name")
+            away = m.get("awayTeam", {}).get("name")
+            if not home or not away:
                 continue
-            # Use earliest gameStartTime
-            kickoff = ""
-            for m in g.get("markets", []):
-                gst = m.get("game_start_time") or ""
-                if gst and (not kickoff or gst < kickoff):
-                    kickoff = gst
-            if not kickoff:
-                continue
-            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            if not kickoff.startswith(today):
-                continue
+                
+            kickoff = m.get("utcDate", "")
+            if kickoff:
+                try:
+                    ts = datetime.fromisoformat(kickoff.replace("Z", "+00:00"))
+                    if ts.date() != now_date:
+                        continue
+                except Exception:
+                    continue
+                    
             fixtures.append({
-                "id": g["id"],
-                "home": g["match"]["home"],
-                "away": g["match"]["away"],
+                "id": m.get("id", ""),
+                "home": home,
+                "away": away,
                 "kickoff": kickoff,
-                "status": "TIMED",
+                "status": m.get("status", "TIMED"),
                 "group": "",
             })
         return fixtures

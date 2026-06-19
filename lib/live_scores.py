@@ -88,3 +88,27 @@ def get_finished_matches() -> dict:
     except Exception as e:
         print(f"[live_scores] get_finished_matches failed: {e}")
         return {}
+
+def get_upcoming_matches() -> list:
+    """Returns a list of raw match objects for the next 7 days from football-data.org."""
+    api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
+    if not api_key:
+        return []
+    
+    import datetime
+    today = datetime.date.today()
+    end = today + datetime.timedelta(days=7)
+    
+    try:
+        url = f"https://api.football-data.org/v4/matches?dateFrom={today.isoformat()}&dateTo={end.isoformat()}"
+        req = urllib.request.Request(
+            url,
+            headers={"X-Auth-Token": api_key}
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read().decode())
+        
+        return data.get("matches", [])
+    except Exception as e:
+        print(f"[live_scores] get_upcoming_matches failed: {e}")
+        return []

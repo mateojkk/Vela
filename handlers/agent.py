@@ -5,7 +5,6 @@ from http.server import BaseHTTPRequestHandler
 
 from lib.common import get_supabase, get_groq, send_json, require_auth_email, read_json_body, options, normalize_address, find_user_id
 from handlers.chat import auto_title
-from lib.polymarket import fetch_wc_events, group_events_by_match
 
 SYSTEM_PROMPT = """You are Vela — a football-obsessed AI rival who never forgets. You track every prediction, remember every take, and hold grudges.
 
@@ -34,23 +33,21 @@ Memory rules:
 
 
 def get_todays_fixtures():
-    events = fetch_wc_events()
+    from lib.live_scores import get_upcoming_matches
+    events = get_upcoming_matches()
     if not events:
         return []
-    groups = group_events_by_match(events)
-    fixtures = []
     
+    fixtures = []
     now_date = datetime.now(timezone.utc).date()
     
-    for g in groups:
-        if not g.get("match"):
+    for m in events:
+        home = m.get("homeTeam", {}).get("name")
+        away = m.get("awayTeam", {}).get("name")
+        if not home or not away:
             continue
-        kickoff = ""
-        for m in g.get("markets", []):
-            gst = m.get("game_start_time") or ""
-            if gst and (not kickoff or gst < kickoff):
-                kickoff = gst
-                
+            
+        kickoff = m.get("utcDate", "")
         if kickoff:
             try:
                 ts = datetime.fromisoformat(kickoff.replace("Z", "+00:00"))
@@ -61,8 +58,8 @@ def get_todays_fixtures():
                 continue
                 
         fixtures.append({
-            "home": g["match"]["home"],
-            "away": g["match"]["away"],
+            "home": home,
+            "away": away,
             "kickoff": kickoff,
         })
     return fixtures
