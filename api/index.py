@@ -37,6 +37,7 @@ from handlers import profile
 from handlers import react
 from handlers import reset
 from handlers import resolve
+from handlers import livescores
 
 
 HANDLERS = {
@@ -55,6 +56,7 @@ HANDLERS = {
     "react": react.handler,
     "reset": reset.handler,
     "resolve": resolve.handler,
+    "livescores": livescores.handler,
 }
 
 

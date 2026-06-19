@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
 import MemoryMap from "./pages/MemoryMap";
 import Predictions from "./pages/Predictions";
+import LiveScores from "./pages/LiveScores";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -90,6 +91,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <Feed />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/live"
+                element={
+                  <ProtectedRoute>
+                    <LiveScores />
                   </ProtectedRoute>
                 }
               />

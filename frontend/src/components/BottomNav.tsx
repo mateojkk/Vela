@@ -26,6 +26,23 @@ const items: NavItem[] = [
     ),
   },
   {
+    label: "Live",
+    href: "/live",
+    match: (p) => p === "/live",
+    icon: (active) => (
+      <svg
+        className={`h-5 w-5 ${active ? "text-primary" : "text-muted-foreground"}`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={active ? 2.5 : 2}
+      >
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+  },
+  {
     label: "Chat",
     href: "/",
     match: (p) => p === "/",
