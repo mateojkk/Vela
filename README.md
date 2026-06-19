@@ -6,85 +6,67 @@ Built for [Walrus Session 4 — Walrus Memory Agents World Cup](https://app.noti
 
 ## What is Vela?
 
-Vela is an AI agent that lives on the web. You talk to Vela. Vela knows you. Vela tracks your predictions, remembers your takes, watches your record, and responds as a persistent personality that evolves the more you use it.
+Vela is a persistent, evolving AI agent designed for the 2026 World Cup. You talk to Vela. Vela knows you. Vela tracks your predictions, remembers your takes, watches your record, and responds as a personality that evolves the more you use it. 
 
-The longer the tournament runs, the more useful Vela becomes — because it remembers.
+We didn't just build a chat bot—we built an autonomous sports companion with **deep, on-chain memory**. The longer the tournament runs, the more useful (and opinionated) Vela becomes.
 
-## How Walrus Memory is used
+## Why Vela Wins (Judging Criteria)
 
-Vela uses MemWal (Walrus Memory) to store and recall user context across sessions:
+### 1. Memory Depth & Authenticity
+Vela goes beyond simple text logging. We built an entirely on-chain memory architecture using **MemWal (Walrus Memory)** where every chat, prediction, "win", and "loss" is securely stored on Walrus and associated with a user's wallet via delegate keys.
+* **The Memory Map**: Vela features an interactive, real-time 3D Globe visualization (the "Memory Map") that physically plots every memory Vela has of you. 
+* **Dynamic Personality**: Make terrible picks? Vela remembers them and will roast you in the chat. On a hot streak? Vela knows and hypes you up. Day 1, Vela is a stranger. By Day 30, Vela knows your betting patterns better than you do.
 
-- **Prediction memory**: Every prediction is stored with `remember` and analyzed with `analyze` for granular fact extraction. Vela remembers what you picked, your confidence, and your hot takes.
-- **Outcome feedback**: When predictions resolve, outcomes are written back to MemWal. Vela knows whether you were right or wrong — not just what you predicted.
-- **Conversation memory**: Every chat exchange is stored and fact-extracted. Vela references past conversations naturally.
-- **Temporal anchoring**: All memories include `occurred_at` timestamps, so Vela can say "last Tuesday" instead of "at some point."
-- **Rivalry tracking**: Vela makes its own predictions and tracks its own accuracy. The agent is a rival, not just an oracle.
+### 2. Creativity & Flair
+We actively pivoted away from generic "crypto betting" or "Polymarket clone" aesthetics to deliver a **premium, monolithic dark-mode experience**. 
+* **Sleek Share Cards**: When you make a prediction, Vela generates a stunning, dynamic "Share Card" with ambient lighting, glassmorphism, and giant watermarked "WON ✓" or "LOST ✗" stamps. 
+* **Mobile-First Sharing**: We optimized the architecture to natively support mobile wallet browsers (like Sui Wallet), seamlessly generating native images for easy long-press sharing and downloading.
 
-The memory compounds over time. Day 1, Vela is a stranger. By Day 30, Vela knows your patterns better than you do.
+### 3. Technical Execution
+A focused, complete, and highly polished MVP. 
+* **Frontend**: React 19 + TypeScript + Tailwind v4 + Vite.
+* **Web3 Integration**: Sui `@mysten/dapp-kit` for wallet connections and `@mysten-incubation/memwal` for managing on-chain MemWalAccounts and delegate keys.
+* **Backend**: Vercel Serverless (Python) routing to modular handlers.
+* **AI**: Groq (Llama-3.3-70b-versatile) for lightning-fast, intelligent memory recall.
+* **Database**: Supabase PostgreSQL for leaderboard state.
 
-## Architecture
-
-```
-vela/
-├── frontend/          # React + Vite + Tailwind
-│   └── src/
-│       ├── pages/     # Chat (primary), Feed, Profile, Leaderboard, Login, Onboarding
-│       └── components/ # PredictionModal, CalledIt
-├── api/               # Python serverless functions (Vercel)
-│   ├── agent.py       # MemWal recall + Groq response + conversation memory
-│   ├── predict.py     # Store predictions + Vela's own picks to MemWal
-│   ├── resolve.py     # Hourly cron — resolves matches + writes outcomes to MemWal
-│   ├── brief.py       # Daily morning brief with today's matches + Vela's takes
-│   ├── react.py       # Post-match reaction with Vela's commentary
-│   ├── called_it.py   # Shareable "Called It" cards for correct predictions
-│   ├── profile.py     # User profiles
-│   ├── fixtures.py    # football-data.org World Cup matches
-│   ├── markets.py     # Polymarket Gamma API
-│   ├── leaderboard.py # Top 500 predictors
-│   └── health.py      # MemWal connectivity check
-├── shared/            # TypeScript types
-└── supabase/          # Schema SQL
-```
-
-## Daily rhythm
-
-| Moment | What happens |
-|--------|-------------|
-| Morning | Vela drops today's matches + one hot take + "what's your call?" |
-| Before kickoff | "12 min until Brazil-Spain. Vela's pick is in. Yours?" |
-| After final whistle | "You called it. Or: I can't believe you doubted Morocco. Again." |
-| End of day | Leaderboard shift + "Called It" card if you nailed it |
-
-## Tech stack
+## Architecture & Tech Stack
 
 - **Frontend**: React, TypeScript, Tailwind CSS, Vercel
 - **Backend**: Python, Vercel Serverless
 - **Database**: Supabase (PostgreSQL)
 - **Memory**: MemWal (Walrus Mainnet)
 - **LLM**: Groq (llama-3.3-70b-versatile)
-- **Data**: football-data.org, Polymarket Gamma API
+- **Web3**: Sui Dapp Kit, Mysten Labs MemWal SDK
 
-## Setup
+## Running Locally
 
 1. Clone the repo
-2. Copy `.env.example` to `.env` and fill in your keys
-3. `npm install` in the root
-4. `cd frontend && npm run dev`
-5. Create a Python venv: `python -m venv venv && source venv/bin/activate && pip install -r api/requirements.txt`
-
-## Environment variables
-
-See `.env.example` for all required variables.
+2. Copy `.env.example` to `.env` and fill in your keys (Supabase, Groq).
+3. Install frontend dependencies:
+   ```bash
+   npm install --prefix frontend
+   ```
+4. Create a Python venv for the local API:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   pip install -r api/requirements.txt
+   ```
+5. Run the full stack (Vite frontend + Node proxy + Python API):
+   ```bash
+   npm run dev
+   ```
 
 ## Deployment
 
-Deploy to Vercel:
+Deploy seamlessly to Vercel:
 
 ```bash
 vercel --prod
 ```
 
-The hourly cron for match resolution is configured in `vercel.json`.
+Vercel routing is configured in `vercel.json` to serve the React SPA and proxy `/api/*` to the Python serverless functions.
 
 ## License
 
