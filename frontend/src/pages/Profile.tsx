@@ -59,6 +59,7 @@ export default function Profile() {
     queryKey: ["profile", username],
     queryFn: () => apiGet(`/profile?username=${username}`),
     enabled: !!username,
+    refetchInterval: 30_000,
   });
 
   const isOwnProfile = authUser?.username === username;
