@@ -49,7 +49,7 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
   const [take, setTake] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ pred_id: string; vela_pick: string } | null>(null);
+  const [result, setResult] = useState<{ pred_id: string } | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -80,7 +80,6 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
     try {
       const data = await apiPost<{
         prediction_id: string;
-        vela_pick: string;
         memory_texts: {
           remember: string;
           analyze: string;
@@ -103,7 +102,7 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
         home_team: match?.home,
         away_team: match?.away,
       });
-      setResult({ pred_id: data.prediction_id, vela_pick: data.vela_pick });
+      setResult({ pred_id: data.prediction_id });
 
       // Write prediction memories to Walrus from the frontend.
       if (memwal && authorized) {
@@ -148,7 +147,7 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
               Prediction locked in
             </h3>
             <p className="mb-3 text-sm text-muted-foreground">
-              I picked{" "}
+              You picked{" "}
               <span className="font-semibold text-foreground">
                 {selected?.label}
               </span>{" "}
@@ -156,15 +155,8 @@ export default function PredictionModal({ marketGroup, user, onClose }: Props) {
               <span className="font-semibold text-foreground">
                 {marketGroup.question}
               </span>
-              . Come back later — I'll tell you if I was right.
+              . Come back later to see if you were right.
             </p>
-            {result.vela_pick && (
-              <div className="mb-6 rounded-md border border-border bg-background p-3 text-left">
-                <p className="mb-1 text-xs text-muted-foreground">
-                  Vela agrees!
-                </p>
-              </div>
-            )}
             <button
               onClick={onClose}
               className="rounded-md border border-border bg-background px-6 py-2 text-foreground hover:bg-accent"
