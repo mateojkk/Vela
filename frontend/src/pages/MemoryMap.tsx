@@ -162,7 +162,6 @@ export default function MemoryMap() {
     recall,
     accountId,
   } = useMemWal();
-  const network = (import.meta.env.VITE_SUI_NETWORK ?? "mainnet") as "mainnet" | "testnet";
   const isOwner = !!user && (!username || user.username === username);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -587,7 +586,7 @@ export default function MemoryMap() {
       {accountId && (
         <footer className="mt-8 border-t border-border pt-4 text-center">
           <a
-            href={`https://suiscan.xyz/${network}/object/${accountId}`}
+            href={`https://suivision.xyz/object/${accountId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono text-[10px] text-muted-foreground hover:text-foreground"
