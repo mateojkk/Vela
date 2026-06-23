@@ -461,7 +461,7 @@ export default function MemoryMap() {
     }
   }
 
-  if (!authorized) {
+  if (isOwner && !authorized) {
     return (
       <Layout>
         <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center">
