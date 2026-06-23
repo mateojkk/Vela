@@ -1,22 +1,37 @@
 """
 GET /api/markets
-Fetches upcoming matches from football-data.org and formats them as MarketGroups.
-This replaces the old Polymarket feed.
+Fetches matches from football-data.org and formats them as MarketGroups.
+Calls the API directly (same as livescores.py) to avoid any library issues.
 """
 
+import os
+import json
+import urllib.request
 from http.server import BaseHTTPRequestHandler
 from lib.common import send_json, options
-from lib.live_scores import get_upcoming_matches
+
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         options(self)
 
     def do_GET(self):
+        api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
+        if not api_key:
+            send_json(self, 200, [])
+            return
+
         try:
-            matches = get_upcoming_matches()
+            req = urllib.request.Request(
+                "https://api.football-data.org/v4/matches",
+                headers={"X-Auth-Token": api_key},
+            )
+            with urllib.request.urlopen(req, timeout=8) as response:
+                data = json.loads(response.read().decode())
+
+            matches = data.get("matches", [])
         except Exception as e:
-            print(f"[markets] get_upcoming_matches failed: {e}")
+            print(f"[markets] API fetch failed: {e}")
             send_json(self, 200, [])
             return
 
