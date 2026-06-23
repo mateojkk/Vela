@@ -107,11 +107,11 @@ def get_upcoming_matches() -> list:
     api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
     if not api_key:
         return []
-    
+
     import datetime
     today = datetime.date.today()
     end = today + datetime.timedelta(days=7)
-    
+
     try:
         url = f"https://api.football-data.org/v4/matches?dateFrom={today.isoformat()}&dateTo={end.isoformat()}"
         req = urllib.request.Request(
@@ -120,8 +120,21 @@ def get_upcoming_matches() -> list:
         )
         with urllib.request.urlopen(req, timeout=8) as response:
             data = json.loads(response.read().decode())
-        
+
+        matches = data.get("matches", [])
+        if matches:
+            return matches
+    except Exception as e:
+        print(f"[live_scores] get_upcoming_matches date range failed: {e}")
+
+    try:
+        req = urllib.request.Request(
+            "https://api.football-data.org/v4/matches",
+            headers={"X-Auth-Token": api_key}
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read().decode())
         return data.get("matches", [])
     except Exception as e:
-        print(f"[live_scores] get_upcoming_matches failed: {e}")
+        print(f"[live_scores] get_upcoming_matches fallback failed: {e}")
         return []

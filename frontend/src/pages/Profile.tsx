@@ -303,7 +303,7 @@ export default function Profile() {
       )}
 
       {isOwnProfile && (
-        <section className="mt-10 border-t border-border pt-6">
+        <section className="mt-10 hidden border-t border-border pt-6 md:block">
           <button
             onClick={() => {
               signOut();
