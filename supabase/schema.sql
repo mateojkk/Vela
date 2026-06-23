@@ -7,6 +7,8 @@ create table if not exists users (
   display_name text,
   avatar_url  text,
   memwal_account_id text,
+  memory_public boolean not null default false,
+  memory_share_key text,
   created_at  timestamptz not null default now()
 );
 
@@ -18,7 +20,8 @@ create table if not exists leaderboard (
   accuracy_pct      real not null default 0,
   total_predictions integer not null default 0,
   correct           integer not null default 0,
-  rank              integer not null default 999
+  rank              integer not null default 999,
+  rank_score        double precision not null default 0
 );
 
 create table if not exists predictions (

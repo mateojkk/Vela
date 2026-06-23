@@ -13,6 +13,7 @@ import Leaderboard from "./pages/Leaderboard";
 import MemoryMap from "./pages/MemoryMap";
 import Predictions from "./pages/Predictions";
 import LiveScores from "./pages/LiveScores";
+import Settings from "./pages/Settings";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -99,6 +100,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <LiveScores />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
                   </ProtectedRoute>
                 }
               />

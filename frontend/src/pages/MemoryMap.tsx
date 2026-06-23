@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { MemWal } from "@mysten-incubation/memwal";
 import { useAuth } from "../hooks/useAuth";
 import { useMemWal } from "../hooks/useMemWal";
 import { apiGet } from "../lib/api";
@@ -19,11 +20,40 @@ const PROBE_QUERIES = [
   "World Cup 2026 tournament matchday goals",
 ];
 
-function classifyMemory(_text: string): Memory["type"] {
+function classifyMemory(text: string): Memory["type"] {
+  const t = text.toLowerCase();
+  if (t.startsWith("vela replied:") || t.startsWith("vela ")) return "rivalry";
+  if (t.includes("hot take") || t.includes("predicted ") || t.includes("prediction:")) {
+    if (t.includes("incorrect") || t.includes("wrong") || t.includes("miss")) return "miss";
+    if (t.includes("correct") || t.includes("right") || t.includes("hit")) return "hit";
+    return "prediction";
+  }
+  if (t.startsWith("user said:") || t.includes("i think") || t.includes("i believe") || t.includes("opinion")) {
+    return "opinion";
+  }
+  if (t.includes(" vs ") || t.includes("match") || t.includes("world cup")) return "match";
   return "memory";
 }
 
-// Grouping and type configurations have been removed.
+const TYPE_COLOR: Record<Memory["type"], string> = {
+  prediction: "#38bdf8",
+  hit: "#3fe77e",
+  miss: "#ff5c5c",
+  opinion: "#e0a878",
+  rivalry: "#9a9cc4",
+  match: "#38bdf8",
+  memory: "#a1a1aa",
+};
+
+const TYPE_LABEL: Record<Memory["type"], string> = {
+  prediction: "PRED",
+  hit: "HIT",
+  miss: "MISS",
+  opinion: "OPIN",
+  rivalry: "VELA",
+  match: "MATCH",
+  memory: "MEM",
+};
 
 const POLL_MS = 30_000;
 const GLOBE_SIZE = 380;
@@ -173,19 +203,48 @@ export default function MemoryMap() {
   const healthRef = useRef<{ ok: boolean; message: string } | null>(null);
   const [search, setSearch] = useState("");
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
-  const [profileData, setProfileData] = useState<{ record?: { correct: number; total_predictions: number } } | null>(null);
+  const [profileData, setProfileData] = useState<{ record?: { correct: number; total_predictions: number }; user?: { memory_public?: boolean; memory_share_key?: string | null; memwal_account_id?: string | null; username?: string } } | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
   const animRef = useRef<number>(0);
   const rotYRef = useRef(0);
   const mouseRef = useRef({ x: 0, y: 0, dragging: false });
+
+  // Public MemWal client for viewing other users' memory when they've made it public
+  const publicMemwal = useMemo<MemWal | null>(() => {
+    if (isOwner) return null;
+    const u = profileData?.user;
+    if (!u?.memory_public || !u.memory_share_key || !u.memwal_account_id) return null;
+    try {
+      return MemWal.create({
+        key: u.memory_share_key,
+        accountId: u.memwal_account_id,
+        serverUrl: `${window.location.origin}/api/memwal`,
+        namespace: u.username || "public",
+      });
+    } catch {
+      return null;
+    }
+  }, [isOwner, profileData]);
+
+  const activeRecall = useMemo(() => {
+    if (isOwner) return recall;
+    if (publicMemwal) {
+      return async (query: string, options?: { limit?: number; maxDistance?: number }) => {
+        const result = await publicMemwal.recall(query, options);
+        return result as { results: Array<{ text: string; distance: number; blob_id: string }>; total: number };
+      };
+    }
+    return null;
+  }, [isOwner, recall, publicMemwal]);
 
   useEffect(() => {
     const targetUser = username || user?.username;
     if (!targetUser) return;
     let cancelled = false;
     apiGet(`/profile?username=${targetUser}`)
-      .then((data: any) => {
-        if (!cancelled) setProfileData(data);
+      .then((data: unknown) => {
+        const typed = data as { record?: { correct: number; total_predictions: number }; user?: { memory_public?: boolean; memory_share_key?: string | null; memwal_account_id?: string | null; username?: string } };
+        if (!cancelled) setProfileData(typed);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -207,7 +266,7 @@ export default function MemoryMap() {
       points.push({
         lat: Math.max(-85, Math.min(85, lat)),
         lng,
-        color: ["#38bdf8", "#3fe77e", "#ff5c5c", "#9a9cc4", "#e0a878", "#a1a1aa"][Math.abs(seed) % 6],
+        color: TYPE_COLOR[m.type] ?? "#a1a1aa",
         size: 2 + m.distance * 3,
         id: m.blob_id,
         memory: m,
@@ -240,14 +299,14 @@ export default function MemoryMap() {
   }, [isOwner, memwal]);
 
   useEffect(() => {
-    if (!isOwner || !memwal) return;
+    if (!activeRecall) return;
     let cancelled = false;
 
     const load = () => {
       setLoading(true);
       setSyncError(null);
       Promise.allSettled(
-        PROBE_QUERIES.map((q) => recall(q, { limit: 20 }))
+        PROBE_QUERIES.map((q) => activeRecall(q, { limit: 20 }))
       )
         .then((results) => {
           if (cancelled) return;
@@ -298,7 +357,7 @@ export default function MemoryMap() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [isOwner, memwal, recall]);
+  }, [activeRecall]);
 
   // Globe animation loop
   useEffect(() => {
@@ -377,17 +436,29 @@ export default function MemoryMap() {
   // Removed toggleFilter and typeStats
 
   if (!isOwner) {
-    return (
-      <Layout>
-        <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center">
-          <div className="mb-4 text-4xl">🔒</div>
-          <h2 className="mb-2 text-lg font-semibold text-foreground">Private memory</h2>
-          <p className="text-sm text-muted-foreground">
-            This memory map belongs to @{username}.
-          </p>
-        </div>
-      </Layout>
-    );
+    if (!profileData) {
+      return (
+        <Layout>
+          <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center">
+            <div className="mx-auto mb-3 h-10 w-10 rounded-full border-2 border-border border-t-primary animate-spin" />
+            <p className="font-mono text-xs text-muted-foreground">Loading memory…</p>
+          </div>
+        </Layout>
+      );
+    }
+    if (!publicMemwal) {
+      return (
+        <Layout>
+          <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-md border border-border bg-card p-10 text-center">
+            <div className="mb-4 text-4xl">🔒</div>
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Private memory</h2>
+            <p className="text-sm text-muted-foreground">
+              @{username}'s memory map is private.
+            </p>
+          </div>
+        </Layout>
+      );
+    }
   }
 
   if (!authorized) {
@@ -426,6 +497,17 @@ export default function MemoryMap() {
   return (
     <Layout>
       <div className="mx-auto max-w-5xl">
+        {!isOwner && (
+          <div className="mb-4 flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 px-4 py-2">
+            <span className="text-xs font-medium text-primary">
+              Viewing @{username}'s public memory
+            </span>
+            <Link to="/settings" className="text-[10px] text-muted-foreground hover:text-foreground">
+              Manage your own →
+            </Link>
+          </div>
+        )}
+
         {/* Stats row */}
         <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded border border-border bg-card/80 p-3 text-center">
@@ -550,7 +632,13 @@ export default function MemoryMap() {
                         : "border-border bg-card/80 hover:border-muted-foreground/30"
                     }`}
                   >
-                    <div className="mb-1 flex items-center justify-end">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span
+                        className="rounded px-1.5 py-0.5 font-mono text-[8px] font-bold tracking-widest"
+                        style={{ color: TYPE_COLOR[m.type], border: `1px solid ${TYPE_COLOR[m.type]}40` }}
+                      >
+                        {TYPE_LABEL[m.type]}
+                      </span>
                       <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
                         {((1 - m.distance) * 100).toFixed(0)}% Match
                       </span>
@@ -583,15 +671,15 @@ export default function MemoryMap() {
         </div>
       </div>
 
-      {accountId && (
+      {(accountId || (publicMemwal && profileData?.user?.memwal_account_id)) && (
         <footer className="mt-8 border-t border-border pt-4 text-center">
           <a
-            href={`https://suivision.xyz/object/${accountId}`}
+            href={`https://suivision.xyz/object/${isOwner ? accountId : profileData?.user?.memwal_account_id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="font-mono text-[10px] text-muted-foreground hover:text-foreground"
           >
-            view your agent memories on suiscan ↗
+            {isOwner ? "view your agent memories on suivision ↗" : `view @${username}'s MemWalAccount on suivision ↗`}
           </a>
         </footer>
       )}

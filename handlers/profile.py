@@ -63,7 +63,7 @@ def _select_user(supabase, *, by_email: str | None = None, by_username: str | No
 
     Email lookup is case-insensitive because Sui addresses are, and also
     tries with/without the 0x prefix to handle legacy rows."""
-    cols = "id, email, username, display_name, avatar_url, memwal_account_id, created_at"
+    cols = "id, email, username, display_name, avatar_url, memwal_account_id, memory_public, memory_share_key, created_at"
     fallback_cols = "id, email, username, created_at"
     emails = address_variants(normalize_address(by_email))
     username = by_username.strip().lower() if by_username else None
@@ -87,13 +87,15 @@ def _select_user(supabase, *, by_email: str | None = None, by_username: str | No
             return row
     except Exception as e:
         msg = str(e)
-        if any(col in msg for col in ("display_name", "avatar_url", "memwal_account_id")) or "42703" in msg:
+        if any(col in msg for col in ("display_name", "avatar_url", "memwal_account_id", "memory_public", "memory_share_key")) or "42703" in msg:
             try:
                 row = _try_select(emails, fallback_cols)
                 if row:
                     row.setdefault("display_name", None)
                     row.setdefault("avatar_url", None)
                     row.setdefault("memwal_account_id", None)
+                    row.setdefault("memory_public", False)
+                    row.setdefault("memory_share_key", None)
                     return row
             except Exception:
                 return None
@@ -273,6 +275,15 @@ class handler(BaseHTTPRequestHandler):
                 preds = _select_predictions(supabase, user["id"], limit=20)
 
                 safe_user = {k: v for k, v in user.items() if k != "email"}
+
+                if not user.get("memory_public"):
+                    safe_user.pop("memory_share_key", None)
+                    safe_user.pop("memwal_account_id", None)
+                else:
+                    if not user.get("memory_share_key") or not user.get("memwal_account_id"):
+                        safe_user.pop("memory_share_key", None)
+                        safe_user.pop("memwal_account_id", None)
+
                 send_json(self, 200, {
                     "user": safe_user,
                     "record": record,
@@ -433,6 +444,10 @@ class handler(BaseHTTPRequestHandler):
                 send_json(self, 400, {"error": "Invalid MemWal account ID"})
                 return
             updates["memwal_account_id"] = mw or None
+        if "memory_public" in body:
+            updates["memory_public"] = bool(body.get("memory_public"))
+        if "memory_share_key" in body:
+            updates["memory_share_key"] = (body.get("memory_share_key") or "").strip() or None
 
         if not updates:
             send_json(self, 400, {"error": "No fields to update"})
@@ -452,6 +467,13 @@ class handler(BaseHTTPRequestHandler):
                     updates.pop("memwal_account_id")
                     if not updates:
                         send_json(self, 400, {"error": "No fields to update"})
+                        return
+                    result = supabase.table("users").update(updates).eq("id", existing["id"]).execute()
+                elif _column_missing_error(exc, "memory_public") or _column_missing_error(exc, "memory_share_key"):
+                    updates.pop("memory_public", None)
+                    updates.pop("memory_share_key", None)
+                    if not updates:
+                        send_json(self, 400, {"error": "No fields to update — run the memory_public migration"})
                         return
                     result = supabase.table("users").update(updates).eq("id", existing["id"]).execute()
                 else:

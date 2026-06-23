@@ -149,6 +149,17 @@ export default function Layout({
                       >
                         Profile
                       </Link>
+                      <Link
+                        to="/settings"
+                        onClick={() => setNavOpen(false)}
+                        className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                          location.pathname === "/settings"
+                            ? "bg-accent text-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        }`}
+                      >
+                        Settings
+                      </Link>
                       <button
                         onClick={() => {
                           setNavOpen(false);

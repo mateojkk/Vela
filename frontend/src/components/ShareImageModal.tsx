@@ -114,7 +114,9 @@ export default function ShareImageModal({ prediction, username, displayName, ava
           document.body.appendChild(a); a.click();
           document.body.removeChild(a); 
           URL.revokeObjectURL(objectUrl);
-        } catch(e) {}
+        } catch {
+          // download failed
+        }
       }
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") console.error(e);
