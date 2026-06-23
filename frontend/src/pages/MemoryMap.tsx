@@ -748,11 +748,6 @@ function JourneyTimeline({ journey }: { journey: JourneyData }) {
   const { summary, days } = journey;
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
-  function predLabel(p: JourneyPrediction): string {
-    if (p.home_team && p.away_team) return `${p.home_team} vs ${p.away_team}`;
-    return p.question || "Market pick";
-  }
-
   function formatDate(date: string): string {
     try {
       return new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -761,88 +756,65 @@ function JourneyTimeline({ journey }: { journey: JourneyData }) {
     }
   }
 
+  const firstDay = days[0];
+  const lastDay = days[days.length - 1];
+  const firstVelaReply = firstDay?.chats.find((c) => c.role === "assistant");
+  const latestVelaReply = lastDay?.chats.findLast?.((c) => c.role === "assistant")
+    || [...(lastDay?.chats || [])].reverse().find((c) => c.role === "assistant");
+
   return (
     <section className="mb-6 rounded-md border border-border bg-card p-5">
-      <h2 className="mb-3 text-sm font-semibold text-foreground">Memory journey</h2>
+      <h2 className="mb-1 text-sm font-semibold text-foreground">Agent memory journey</h2>
+      <p className="mb-4 text-[11px] text-muted-foreground">
+        How Vela's responses changed from day one to day {summary.total_days}. Same agent, more memory.
+      </p>
 
-      {/* Day 1 vs Day N summary */}
-      <div className="mb-4 grid grid-cols-2 gap-3">
+      {/* Day 1 vs Day N — Vela's actual replies */}
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-md border border-border bg-background p-3">
-          <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-            Day 1 · {formatDate(summary.first_day)}
+          <div className="mb-2 flex items-center gap-2">
+            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] font-bold text-muted-foreground">DAY 1</span>
+            <span className="text-[10px] text-muted-foreground">{formatDate(summary.first_day)}</span>
           </div>
-          {summary.first_prediction ? (
-            <>
-              <div className="text-xs font-medium text-foreground">
-                {predLabel(summary.first_prediction)}
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                Pick: {summary.first_prediction.pick} · {summary.first_prediction.confidence}/10
-              </div>
-              {summary.first_prediction.take && (
-                <div className="mt-1 truncate text-[10px] italic text-muted-foreground">
-                  "{summary.first_prediction.take}"
-                </div>
-              )}
-            </>
+          {firstVelaReply ? (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {firstVelaReply.content.slice(0, 200)}{firstVelaReply.content.length > 200 ? "..." : ""}
+            </p>
           ) : (
-            <div className="text-xs text-muted-foreground">No predictions</div>
+            <p className="text-[11px] text-muted-foreground">No chat yet — Vela doesn't know you.</p>
           )}
-          <div className="mt-2 font-mono text-[10px] tabular-nums text-muted-foreground">
-            Acc: {summary.accuracy_then.toFixed(1)}%
-          </div>
         </div>
 
-        <div className="rounded-md border border-border bg-background p-3">
-          <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-            Day {summary.total_days} · {formatDate(summary.last_day)}
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="rounded bg-primary/20 px-1.5 py-0.5 font-mono text-[9px] font-bold text-primary">DAY {summary.total_days}</span>
+            <span className="text-[10px] text-muted-foreground">{formatDate(summary.last_day)}</span>
           </div>
-          {summary.latest_prediction ? (
-            <>
-              <div className="text-xs font-medium text-foreground">
-                {predLabel(summary.latest_prediction)}
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                Pick: {summary.latest_prediction.pick} · {summary.latest_prediction.confidence}/10
-              </div>
-              {summary.latest_prediction.take && (
-                <div className="mt-1 truncate text-[10px] italic text-muted-foreground">
-                  "{summary.latest_prediction.take}"
-                </div>
-              )}
-            </>
+          {latestVelaReply ? (
+            <p className="text-[11px] leading-relaxed text-foreground">
+              {latestVelaReply.content.slice(0, 200)}{latestVelaReply.content.length > 200 ? "..." : ""}
+            </p>
           ) : (
-            <div className="text-xs text-muted-foreground">No predictions</div>
+            <p className="text-[11px] text-muted-foreground">No chat on this day.</p>
           )}
-          <div className="mt-2 font-mono text-[10px] tabular-nums text-muted-foreground">
-            Acc: {summary.accuracy_now.toFixed(1)}%
-          </div>
         </div>
       </div>
 
-      {/* Accuracy delta */}
-      {summary.total_predictions > 0 && (
-        <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            {summary.total_predictions} predictions · {summary.total_chats} chats · {summary.total_days} days
-          </span>
-          <span className={`font-mono text-xs font-bold tabular-nums ${
-            summary.accuracy_now > summary.accuracy_then
-              ? "text-success"
-              : summary.accuracy_now < summary.accuracy_then
-              ? "text-danger"
-              : "text-muted-foreground"
-          }`}>
-            {summary.accuracy_now > summary.accuracy_then ? "↑" : summary.accuracy_now < summary.accuracy_then ? "↓" : "→"}{" "}
-            {(summary.accuracy_now - summary.accuracy_then).toFixed(1)}%
-          </span>
-        </div>
-      )}
+      {/* Stats bar */}
+      <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          {summary.total_chats} messages · {summary.total_predictions} predictions · {summary.total_days} days
+        </span>
+        <span className="font-mono text-[10px] tabular-nums text-primary">
+          {summary.accuracy_now.toFixed(1)}% acc
+        </span>
+      </div>
 
-      {/* Day-by-day timeline */}
-      <div className="thin-scrollbar max-h-[300px] space-y-1.5 overflow-y-auto pr-1">
+      {/* Day-by-day timeline — Vela's responses */}
+      <div className="thin-scrollbar max-h-[350px] space-y-1.5 overflow-y-auto pr-1">
         {days.map((day) => {
           const isExpanded = expandedDay === day.day_number;
+          const velaReplies = day.chats.filter((c) => c.role === "assistant");
           return (
             <button
               key={day.date}
@@ -860,44 +832,44 @@ function JourneyTimeline({ journey }: { journey: JourneyData }) {
                   </span>
                   <span className="text-[10px] text-muted-foreground">{formatDate(day.date)}</span>
                   <span className="text-[10px] text-muted-foreground">
+                    {velaReplies.length > 0 && `${velaReplies.length} repl${velaReplies.length > 1 ? "ies" : "y"}`}
+                    {velaReplies.length > 0 && day.predictions.length > 0 && " · "}
                     {day.predictions.length > 0 && `${day.predictions.length} pick${day.predictions.length > 1 ? "s" : ""}`}
-                    {day.predictions.length > 0 && day.chats.length > 0 && " · "}
-                    {day.chats.length > 0 && `${day.chats.length} chat${day.chats.length > 1 ? "s" : ""}`}
-                    {day.predictions.length === 0 && day.chats.length === 0 && "—"}
+                    {velaReplies.length === 0 && day.predictions.length === 0 && "—"}
                   </span>
                 </div>
-                <span className={`font-mono text-[10px] tabular-nums ${
-                  day.accuracy_so_far.pct >= 50 ? "text-success" : day.accuracy_so_far.total > 0 ? "text-danger" : "text-muted-foreground"
-                }`}>
-                  {day.accuracy_so_far.total > 0
-                    ? `${day.accuracy_so_far.correct}/${day.accuracy_so_far.total} (${day.accuracy_so_far.pct}%)`
-                    : ""}
-                </span>
               </div>
+              {!isExpanded && velaReplies.length > 0 && (
+                <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                  <span className="text-primary">Vela: </span>
+                  {velaReplies[0].content.slice(0, 80)}{velaReplies[0].content.length > 80 ? "..." : ""}
+                </p>
+              )}
               {isExpanded && (
-                <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-                  {day.predictions.map((p, i) => (
-                    <div key={i} className="flex items-center justify-between text-[10px]">
-                      <span className="min-w-0 truncate text-foreground">
-                        <span className="text-muted-foreground">{predLabel(p)}: </span>
-                        <span className="font-medium">{p.pick}</span>
-                        <span className="text-muted-foreground"> ({p.confidence}/10)</span>
+                <div className="mt-2 space-y-2 border-t border-border pt-2">
+                  {day.chats.map((c, i) => (
+                    <div key={i} className="text-[10px] leading-relaxed">
+                      <span className={`font-bold ${c.role === "user" ? "text-muted-foreground" : "text-primary"}`}>
+                        {c.role === "user" ? "You: " : "Vela: "}
                       </span>
-                      <span className={`shrink-0 font-bold uppercase ${
-                        p.outcome === "correct" ? "text-success"
-                        : p.outcome === "incorrect" ? "text-danger"
-                        : "text-muted-foreground"
-                      }`}>
-                        {p.outcome === "correct" ? "HIT" : p.outcome === "incorrect" ? "MISS" : "—"}
+                      <span className={c.role === "user" ? "text-muted-foreground" : "text-foreground"}>
+                        {c.content.slice(0, 250)}{c.content.length > 250 ? "..." : ""}
                       </span>
                     </div>
                   ))}
-                  {day.chats.slice(-2).map((c, i) => (
-                    <div key={i} className="truncate text-[10px] text-muted-foreground">
-                      <span className="font-bold text-primary">{c.role === "user" ? "You" : "Vela"}: </span>
-                      {c.content.slice(0, 100)}{c.content.length > 100 ? "..." : ""}
+                  {day.predictions.length > 0 && (
+                    <div className="border-t border-border pt-1.5 text-[9px] text-muted-foreground">
+                      {day.predictions.map((p, i) => (
+                        <div key={i}>
+                          <span className="text-foreground">Predicted: {p.pick}</span>
+                          {p.home_team && p.away_team && <span> in {p.home_team} vs {p.away_team}</span>}
+                          <span className={`ml-1 font-bold ${p.outcome === "correct" ? "text-success" : p.outcome === "incorrect" ? "text-danger" : ""}`}>
+                            {p.outcome === "correct" ? "✓ HIT" : p.outcome === "incorrect" ? "✗ MISS" : "— pending"}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </button>
