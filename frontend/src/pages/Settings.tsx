@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import Layout from "../components/Layout";
 import EditProfileModal from "../components/EditProfileModal";
 import { useAuth } from "../hooks/useAuth";
-import { useMemWal } from "../hooks/useMemWal";
 import { apiGet, apiPatch } from "../lib/api";
 
 interface ProfileData {
@@ -22,27 +21,46 @@ export default function Settings() {
   const { user, signOut, refreshUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { delegate } = useMemWalPrivate();
   const [editing, setEditing] = useState(false);
   const [memoryPublic, setMemoryPublic] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  async function loadProfile() {
-    if (!user?.username || loaded) return;
+  const walletAddress = user?.email || "";
+
+  useEffect(() => {
+    if (!user?.username || profileLoaded) return;
+    let cancelled = false;
+    apiGet<ProfileData>(`/profile?username=${user.username}`)
+      .then((data) => {
+        if (cancelled) return;
+        setMemoryPublic(!!data.user?.memory_public);
+        setShareUrl(`${window.location.origin}/memory/${user.username}`);
+        setProfileLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setProfileLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.username, profileLoaded]);
+
+  function getDelegatePrivateKey(): string | null {
     try {
-      const data = await apiGet<ProfileData>(`/profile?username=${user.username}`);
-      setMemoryPublic(!!data.user?.memory_public);
-      setShareUrl(`${window.location.origin}/memory/${user.username}`);
-      setLoaded(true);
+      const raw = localStorage.getItem(`vela_memwal_delegate_${walletAddress}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return parsed.privateKey || null;
+      }
     } catch {
-      setLoaded(true);
+      // no delegate key
     }
+    return null;
   }
-  loadProfile();
 
   async function toggleMemoryPublic(next: boolean) {
     if (!user?.email) return;
@@ -55,8 +73,12 @@ export default function Settings() {
         email: user.email,
         memory_public: next,
       };
-      if (next && delegate?.privateKey) {
-        patch.memory_share_key = delegate.privateKey;
+      if (next) {
+        const privateKey = getDelegatePrivateKey();
+        if (!privateKey) {
+          throw new Error("No delegate key found — connect your wallet and authorize memory first.");
+        }
+        patch.memory_share_key = privateKey;
       }
       await apiPatch("/profile", patch);
       await refreshUser();
@@ -66,7 +88,8 @@ export default function Settings() {
       }
     } catch (err) {
       setMemoryPublic(prev);
-      setToggleError(err instanceof Error ? err.message : "Failed to update");
+      const msg = err instanceof Error ? err.message : "Failed to update";
+      setToggleError(msg);
     } finally {
       setToggling(false);
     }
@@ -138,7 +161,7 @@ export default function Settings() {
           <h2 className="mb-1 text-sm font-semibold text-foreground">Memory visibility</h2>
           <p className="mb-4 text-xs text-muted-foreground">
             Make your Walrus memory map public so others can see what Vela has learned about you
-            over time. Your private delegate key is shared to enable read access.
+            over time.
           </p>
 
           <div className="flex items-center justify-between rounded-md border border-border bg-background p-3">
@@ -158,20 +181,24 @@ export default function Settings() {
               aria-checked={memoryPublic}
               disabled={toggling}
               onClick={() => toggleMemoryPublic(!memoryPublic)}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-                memoryPublic ? "bg-primary" : "bg-border"
+              className={`relative h-7 w-12 shrink-0 rounded-full border transition-all disabled:opacity-50 ${
+                memoryPublic
+                  ? "border-primary bg-primary"
+                  : "border-border bg-muted"
               }`}
             >
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                  memoryPublic ? "translate-x-5" : "translate-x-0.5"
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all duration-200 ${
+                  memoryPublic ? "left-[1.5rem]" : "left-0.5"
                 }`}
               />
             </button>
           </div>
 
           {toggleError && (
-            <p className="mt-2 text-xs text-danger">{toggleError}</p>
+            <p className="mt-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+              {toggleError}
+            </p>
           )}
 
           {memoryPublic && shareUrl && (
@@ -247,21 +274,4 @@ export default function Settings() {
       )}
     </Layout>
   );
-}
-
-function useMemWalPrivate() {
-  const { delegateAddress } = useMemWal();
-  let delegate: { privateKey: string } | null = null;
-  try {
-    if (delegateAddress) {
-      const raw = localStorage.getItem(`vela_memwal_delegate_${delegateAddress}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        delegate = { privateKey: parsed.privateKey };
-      }
-    }
-  } catch {
-    // no delegate key in localStorage
-  }
-  return { delegate };
 }
