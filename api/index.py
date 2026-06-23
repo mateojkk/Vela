@@ -27,6 +27,7 @@ from handlers import brief
 from handlers import called_it
 from handlers import chat
 from handlers import health
+from handlers import journey
 from handlers import leaderboard
 from handlers import markets
 from handlers import memwal
@@ -45,6 +46,7 @@ HANDLERS = {
     "called_it": called_it.handler,
     "chat": chat.handler,
     "health": health.handler,
+    "journey": journey.handler,
     "leaderboard": leaderboard.handler,
     "markets": markets.handler,
     "memwal": memwal.handler,

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { MemWal } from "@mysten-incubation/memwal";
 import { useAuth } from "../hooks/useAuth";
 import { useMemWal } from "../hooks/useMemWal";
@@ -54,6 +55,49 @@ const TYPE_LABEL: Record<Memory["type"], string> = {
   match: "MATCH",
   memory: "MEM",
 };
+
+interface JourneyPrediction {
+  pick: string;
+  home_team: string | null;
+  away_team: string | null;
+  question: string | null;
+  confidence: number;
+  take: string | null;
+  resolved: boolean;
+  outcome: string | null;
+  created_at: string;
+}
+
+interface JourneyChat {
+  role: string;
+  content: string;
+  created_at: string;
+}
+
+interface JourneyDay {
+  date: string;
+  day_number: number;
+  predictions: JourneyPrediction[];
+  chats: JourneyChat[];
+  accuracy_so_far: { correct: number; total: number; pct: number };
+}
+
+interface JourneySummary {
+  first_day: string;
+  last_day: string;
+  total_days: number;
+  total_predictions: number;
+  total_chats: number;
+  first_prediction: JourneyPrediction | null;
+  latest_prediction: JourneyPrediction | null;
+  accuracy_then: number;
+  accuracy_now: number;
+}
+
+interface JourneyData {
+  days: JourneyDay[];
+  summary: JourneySummary;
+}
 
 const POLL_MS = 30_000;
 const GLOBE_SIZE = 380;
@@ -249,6 +293,14 @@ export default function MemoryMap() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [username, user?.username]);
+
+  const targetUser = username || user?.username;
+  const { data: journey } = useQuery<JourneyData>({
+    queryKey: ["journey", targetUser],
+    queryFn: () => apiGet(`/journey?username=${targetUser}`),
+    enabled: !!targetUser,
+    staleTime: 60_000,
+  });
 
   const globePoints = useMemo<GlobePoint[]>(() => {
     if (memories.length === 0) return [];
@@ -508,6 +560,11 @@ export default function MemoryMap() {
           </div>
         )}
 
+        {/* Journey timeline */}
+        {journey && journey.summary.total_days > 0 && (
+          <JourneyTimeline journey={journey} />
+        )}
+
         {/* Stats row */}
         <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded border border-border bg-card/80 p-3 text-center">
@@ -684,5 +741,169 @@ export default function MemoryMap() {
         </footer>
       )}
     </Layout>
+  );
+}
+
+function JourneyTimeline({ journey }: { journey: JourneyData }) {
+  const { summary, days } = journey;
+  const [expandedDay, setExpandedDay] = useState<number | null>(null);
+
+  function predLabel(p: JourneyPrediction): string {
+    if (p.home_team && p.away_team) return `${p.home_team} vs ${p.away_team}`;
+    return p.question || "Market pick";
+  }
+
+  function formatDate(date: string): string {
+    try {
+      return new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    } catch {
+      return date;
+    }
+  }
+
+  return (
+    <section className="mb-6 rounded-md border border-border bg-card p-5">
+      <h2 className="mb-3 text-sm font-semibold text-foreground">Memory journey</h2>
+
+      {/* Day 1 vs Day N summary */}
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="rounded-md border border-border bg-background p-3">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+            Day 1 · {formatDate(summary.first_day)}
+          </div>
+          {summary.first_prediction ? (
+            <>
+              <div className="text-xs font-medium text-foreground">
+                {predLabel(summary.first_prediction)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Pick: {summary.first_prediction.pick} · {summary.first_prediction.confidence}/10
+              </div>
+              {summary.first_prediction.take && (
+                <div className="mt-1 truncate text-[10px] italic text-muted-foreground">
+                  "{summary.first_prediction.take}"
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-xs text-muted-foreground">No predictions</div>
+          )}
+          <div className="mt-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+            Acc: {summary.accuracy_then.toFixed(1)}%
+          </div>
+        </div>
+
+        <div className="rounded-md border border-border bg-background p-3">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+            Day {summary.total_days} · {formatDate(summary.last_day)}
+          </div>
+          {summary.latest_prediction ? (
+            <>
+              <div className="text-xs font-medium text-foreground">
+                {predLabel(summary.latest_prediction)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Pick: {summary.latest_prediction.pick} · {summary.latest_prediction.confidence}/10
+              </div>
+              {summary.latest_prediction.take && (
+                <div className="mt-1 truncate text-[10px] italic text-muted-foreground">
+                  "{summary.latest_prediction.take}"
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-xs text-muted-foreground">No predictions</div>
+          )}
+          <div className="mt-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+            Acc: {summary.accuracy_now.toFixed(1)}%
+          </div>
+        </div>
+      </div>
+
+      {/* Accuracy delta */}
+      {summary.total_predictions > 0 && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            {summary.total_predictions} predictions · {summary.total_chats} chats · {summary.total_days} days
+          </span>
+          <span className={`font-mono text-xs font-bold tabular-nums ${
+            summary.accuracy_now > summary.accuracy_then
+              ? "text-success"
+              : summary.accuracy_now < summary.accuracy_then
+              ? "text-danger"
+              : "text-muted-foreground"
+          }`}>
+            {summary.accuracy_now > summary.accuracy_then ? "↑" : summary.accuracy_now < summary.accuracy_then ? "↓" : "→"}{" "}
+            {(summary.accuracy_now - summary.accuracy_then).toFixed(1)}%
+          </span>
+        </div>
+      )}
+
+      {/* Day-by-day timeline */}
+      <div className="thin-scrollbar max-h-[300px] space-y-1.5 overflow-y-auto pr-1">
+        {days.map((day) => {
+          const isExpanded = expandedDay === day.day_number;
+          return (
+            <button
+              key={day.date}
+              onClick={() => setExpandedDay(isExpanded ? null : day.day_number)}
+              className={`w-full rounded border p-2.5 text-left transition-colors ${
+                isExpanded
+                  ? "border-primary/40 bg-accent"
+                  : "border-border bg-background hover:border-muted-foreground/30"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold tabular-nums text-primary">
+                    D{day.day_number}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{formatDate(day.date)}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {day.predictions.length > 0 && `${day.predictions.length} pick${day.predictions.length > 1 ? "s" : ""}`}
+                    {day.predictions.length > 0 && day.chats.length > 0 && " · "}
+                    {day.chats.length > 0 && `${day.chats.length} chat${day.chats.length > 1 ? "s" : ""}`}
+                    {day.predictions.length === 0 && day.chats.length === 0 && "—"}
+                  </span>
+                </div>
+                <span className={`font-mono text-[10px] tabular-nums ${
+                  day.accuracy_so_far.pct >= 50 ? "text-success" : day.accuracy_so_far.total > 0 ? "text-danger" : "text-muted-foreground"
+                }`}>
+                  {day.accuracy_so_far.total > 0
+                    ? `${day.accuracy_so_far.correct}/${day.accuracy_so_far.total} (${day.accuracy_so_far.pct}%)`
+                    : ""}
+                </span>
+              </div>
+              {isExpanded && (
+                <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+                  {day.predictions.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between text-[10px]">
+                      <span className="min-w-0 truncate text-foreground">
+                        <span className="text-muted-foreground">{predLabel(p)}: </span>
+                        <span className="font-medium">{p.pick}</span>
+                        <span className="text-muted-foreground"> ({p.confidence}/10)</span>
+                      </span>
+                      <span className={`shrink-0 font-bold uppercase ${
+                        p.outcome === "correct" ? "text-success"
+                        : p.outcome === "incorrect" ? "text-danger"
+                        : "text-muted-foreground"
+                      }`}>
+                        {p.outcome === "correct" ? "HIT" : p.outcome === "incorrect" ? "MISS" : "—"}
+                      </span>
+                    </div>
+                  ))}
+                  {day.chats.slice(-2).map((c, i) => (
+                    <div key={i} className="truncate text-[10px] text-muted-foreground">
+                      <span className="font-bold text-primary">{c.role === "user" ? "You" : "Vela"}: </span>
+                      {c.content.slice(0, 100)}{c.content.length > 100 ? "..." : ""}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
