@@ -283,6 +283,8 @@ class handler(BaseHTTPRequestHandler):
                     if not user.get("memory_share_key") or not user.get("memwal_account_id"):
                         safe_user.pop("memory_share_key", None)
                         safe_user.pop("memwal_account_id", None)
+                    else:
+                        safe_user["memory_namespace"] = user.get("email", "")
 
                 send_json(self, 200, {
                     "user": safe_user,

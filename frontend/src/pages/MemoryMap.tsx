@@ -203,7 +203,7 @@ export default function MemoryMap() {
   const healthRef = useRef<{ ok: boolean; message: string } | null>(null);
   const [search, setSearch] = useState("");
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
-  const [profileData, setProfileData] = useState<{ record?: { correct: number; total_predictions: number }; user?: { memory_public?: boolean; memory_share_key?: string | null; memwal_account_id?: string | null; username?: string } } | null>(null);
+  const [profileData, setProfileData] = useState<{ record?: { correct: number; total_predictions: number }; user?: { memory_public?: boolean; memory_share_key?: string | null; memwal_account_id?: string | null; memory_namespace?: string; username?: string } } | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
   const animRef = useRef<number>(0);
   const rotYRef = useRef(0);
@@ -219,7 +219,7 @@ export default function MemoryMap() {
         key: u.memory_share_key,
         accountId: u.memwal_account_id,
         serverUrl: `${window.location.origin}/api/memwal`,
-        namespace: u.username || "public",
+        namespace: u.memory_namespace || "default",
       });
     } catch {
       return null;
@@ -243,7 +243,7 @@ export default function MemoryMap() {
     let cancelled = false;
     apiGet(`/profile?username=${targetUser}`)
       .then((data: unknown) => {
-        const typed = data as { record?: { correct: number; total_predictions: number }; user?: { memory_public?: boolean; memory_share_key?: string | null; memwal_account_id?: string | null; username?: string } };
+        const typed = data as { record?: { correct: number; total_predictions: number }; user?: { memory_public?: boolean; memory_share_key?: string | null; memwal_account_id?: string | null; memory_namespace?: string; username?: string } };
         if (!cancelled) setProfileData(typed);
       })
       .catch(() => {});
